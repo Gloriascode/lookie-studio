@@ -28,19 +28,15 @@ export const api = {
   checkout: (slug, lines) => req('POST', `/api/shops/${encodeURIComponent(slug)}/checkout`, { lines }),
 
   listDesigns: () => req('GET', '/api/designs'),
-  uploadDesign: (file, { prompt, variations, motif, colors, styleId } = {}) => {
+  uploadDesign: (file, { prompt, variations } = {}) => {
     const form = new FormData()
     form.append('file', file)
     if (prompt) form.append('prompt', prompt)
     if (variations) form.append('variations', String(variations))
-    if (motif) form.append('motif', motif)
-    if (colors?.length) form.append('colors', JSON.stringify(colors))
-    if (styleId) form.append('styleId', styleId)
     return req('POST', '/api/designs', form)
   },
   listPatterns: () => req('GET', '/api/patterns'),
   createPattern: (body) => req('POST', '/api/patterns', body),
-  listStyles: () => req('GET', '/api/styles'),
 
   listProducts: () => req('GET', '/api/shop/products'),
   createProduct: (slot, patternId) => req('POST', '/api/shop/products', { slot, patternId }),

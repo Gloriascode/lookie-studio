@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
-import { EMPTY_CONTROLS, PatternControls, controlsPayload } from './PatternControls'
 
 const ACCEPT = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_BYTES = 10 * 1024 * 1024
@@ -16,11 +15,7 @@ export function mergePatterns(incoming) {
 export function PatternTile({ pattern, selected, onSelect, size = 'md' }) {
   const ready = pattern.status === 'succeeded' && (pattern.thumbUrl || pattern.imageUrl)
   const label =
-    pattern.status === 'pending'
-      ? 'Pattern in progress'
-      : pattern.status === 'failed'
-        ? 'Pattern failed'
-        : [pattern.motif && `Motif: ${pattern.motif}`, pattern.prompt].filter(Boolean).join(' — ') || 'Pattern'
+    pattern.status === 'pending' ? 'Pattern in progress' : pattern.status === 'failed' ? 'Pattern failed' : pattern.prompt || 'Pattern'
   const body = (
     <>
       {ready ? (
@@ -40,7 +35,7 @@ export function PatternTile({ pattern, selected, onSelect, size = 'md' }) {
       </div>
     )
   return (
-    <button type="button" className={cls} title={label} aria-label={label} aria-pressed={selected} onClick={() => onSelect(pattern)}>
+    <button type="button" className={cls} title={pattern.prompt} aria-label={label} aria-pressed={selected} onClick={() => onSelect(pattern)}>
       {body}
     </button>
   )
@@ -50,7 +45,6 @@ export function UploadDesign() {
   const [file, setFile] = useState(null)
   const [prompt, setPrompt] = useState('')
   const [variations, setVariations] = useState(3)
-  const [controls, setControls] = useState(EMPTY_CONTROLS)
   const [drag, setDrag] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -72,7 +66,7 @@ export function UploadDesign() {
     setBusy(true)
     setError(null)
     try {
-      const res = await api.uploadDesign(file, { prompt: prompt.trim() || undefined, variations, ...controlsPayload(controls) })
+      const res = await api.uploadDesign(file, { prompt: prompt.trim() || undefined, variations })
       appStore.set({ designs: [res.design, ...appStore.get().designs] })
       mergePatterns(res.patterns)
       setFile(null)
@@ -131,7 +125,6 @@ export function UploadDesign() {
         <span>Direction (optional)</span>
         <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g. airy botanical repeat, muted sage" />
       </label>
-      <PatternControls value={controls} onChange={setControls} collapsible />
       <div className="upload__row">
         <label className="field field--inline">
           <span>Variations</span>
@@ -156,21 +149,16 @@ export function PromptComposer({ compact = false, onCreated }) {
   const designs = useApp((s) => s.designs)
   const [prompt, setPrompt] = useState('')
   const [designId, setDesignId] = useState('')
-  const [controls, setControls] = useState(EMPTY_CONTROLS)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
   async function submit(e) {
     e.preventDefault()
-    if (!prompt.trim() && !controls.motif.trim()) return setError('Describe the pattern you want, or give it a motif.')
+    if (!prompt.trim()) return setError('Describe the pattern you want.')
     setBusy(true)
     setError(null)
     try {
-      const { pattern } = await api.createPattern({
-        prompt: prompt.trim() || undefined,
-        designId: designId || undefined,
-        ...controlsPayload(controls),
-      })
+      const { pattern } = await api.createPattern({ prompt: prompt.trim(), designId: designId || undefined })
       mergePatterns([pattern])
       setPrompt('')
       onCreated?.(pattern)
@@ -192,7 +180,6 @@ export function PromptComposer({ compact = false, onCreated }) {
           placeholder="Hand-drawn lemons on a cream ground, loose watercolor, tossed layout"
         />
       </label>
-      <PatternControls value={controls} onChange={setControls} collapsible={compact} />
       <div className="upload__row">
         {designs.length > 0 && (
           <label className="field field--inline field--grow">

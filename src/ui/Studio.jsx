@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { PatternMeta } from './PatternControls'
 import { ZoomableImage, productImages } from './Lightbox'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
@@ -151,7 +150,6 @@ function SlotView({ slotId }) {
   const ready = patterns.filter((p) => p.status === 'succeeded')
   const pendingPatterns = patterns.filter((p) => p.status === 'pending').length
   const chosen = preview?.slot === slotId ? preview : null
-  const chosenPattern = chosen ? patterns.find((p) => p.id === chosen.patternId) : null
 
   function choose(p) {
     if (chosen?.patternId === p.id) appStore.set({ preview: null })
@@ -266,7 +264,6 @@ function SlotView({ slotId }) {
       {slot.category && (
         <div className="slot-view__cta">
           <p className="muted">{chosen ? 'Previewing in the room. Happy with it?' : 'Pick a pattern to preview it in the room.'}</p>
-          {chosenPattern && <PatternMeta pattern={chosenPattern} />}
           <button type="button" className="btn btn--primary btn--block" disabled={!chosen || busy || product?.status === 'pending'} onClick={create}>
             {busy ? 'Starting…' : product ? 'Replace product' : `Create ${slot.label.toLowerCase()}`}
           </button>

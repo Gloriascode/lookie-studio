@@ -8,7 +8,6 @@ import {
   createPattern,
   createShopProduct,
   deleteShopProduct,
-  getStyles,
   listDesigns,
   listPatterns,
   listShopProducts,
@@ -57,7 +56,6 @@ async function route(request, env, ctx) {
   if (path === '/api/designs' && m === 'POST') return uploadDesign(request, env)
   if (path === '/api/patterns' && m === 'GET') return listPatterns(request, env)
   if (path === '/api/patterns' && m === 'POST') return createPattern(request, env)
-  if (path === '/api/styles' && m === 'GET') return getStyles(request, env)
   if (path === '/api/shop/products' && m === 'GET') return listShopProducts(request, env)
   if (path === '/api/shop/products' && m === 'POST') return createShopProduct(request, env, ctx)
   let match = path.match(/^\/api\/shop\/products\/([^/]+)$/)

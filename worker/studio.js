@@ -1,5 +1,5 @@
 // Creator-only routes: shop settings, designs, patterns, products.
-import { arcade, categoryByName, defaultSelections, listStyles, requestId } from './arcade.js'
+import { arcade, categoryByName, defaultSelections, requestId } from './arcade.js'
 import { requireCreator, shopJson, validateSlug } from './auth.js'
 import { HttpError, extFor, fileUrl, json, now, readJson, uuid } from './http.js'
 import { completePattern, refreshPatterns, refreshProducts } from './jobs.js'
@@ -36,9 +36,6 @@ export const patternJson = (p) => ({
   width: p.width ?? null,
   height: p.height ?? null,
   error: p.error ?? null,
-  motif: p.motif ?? null,
-  colors: p.colors_json ? JSON.parse(p.colors_json) : [],
-  styleId: p.style_id ?? null,
   createdAt: p.created_at,
 })
 
@@ -98,25 +95,18 @@ async function createReference(env, bytes, mediaType) {
 }
 
 /** Start a patterns/create job and insert its row. */
-async function startPattern(env, creatorId, { prompt, designId = null, referenceId = null, controls = NO_CONTROLS }) {
-  const { motif, colors, styleId } = controls
-  const row = {
-    id: uuid(), creator_id: creatorId, design_id: designId, prompt, status: 'pending', created_at: now(),
-    motif, colors_json: colors.length ? JSON.stringify(colors) : null, style_id: styleId,
-  }
+async function startPattern(env, creatorId, { prompt, designId = null, referenceId = null }) {
+  const row = { id: uuid(), creator_id: creatorId, design_id: designId, prompt, status: 'pending', created_at: now() }
   const job = await arcade(env, 'patterns/create', {
     requestId: requestId('pattern'),
-    prompt: withMotif(prompt, motif),
+    prompt,
     ...(referenceId ? { referenceIds: [referenceId] } : {}),
-    ...(colors.length ? { colors } : {}),
-    ...(styleId ? { modelId: styleId } : {}),
   })
   row.arcade_job_id = job.jobId
   await env.DB.prepare(
-    `INSERT INTO patterns (id, creator_id, design_id, prompt, motif, colors_json, style_id, arcade_job_id, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    'INSERT INTO patterns (id, creator_id, design_id, prompt, arcade_job_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   )
-    .bind(row.id, creatorId, designId, prompt, motif, row.colors_json, styleId, job.jobId, 'pending', row.created_at)
+    .bind(row.id, creatorId, designId, prompt, job.jobId, 'pending', row.created_at)
     .run()
   // Rare, but a job can come back already finished.
   if (job.status === 'succeeded' && job.result?.patternId) {
@@ -133,40 +123,6 @@ async function startPattern(env, creatorId, { prompt, designId = null, reference
 const cleanPrompt = (p) => String(p ?? '').trim().slice(0, 500)
 const combine = (base, extra) => (extra ? `${base}. ${extra}` : base).slice(0, 1000)
 
-// ── Motif / palette / style ──────────────────────────────────────────────────
-// Arcade has first-class fields for colours (`colors`) and style (`modelId`); the motif has
-// none, so it is folded into the prompt as an explicit focus.
-
-const NO_CONTROLS = { motif: null, colors: [], styleId: null }
-const HEX = /^#[0-9a-f]{6}$/i
-
-/** Validate { motif, colors, styleId } from a JSON body or form fields. */
-async function readControls(env, { motif, colors, styleId }) {
-  const m = String(motif ?? '').trim().slice(0, 200) || null
-  let list = colors ?? []
-  if (typeof list === 'string') {
-    try {
-      list = JSON.parse(list)
-    } catch {
-      list = list.split(',')
-    }
-  }
-  if (!Array.isArray(list)) throw new HttpError(400, 'colors must be a list of #RRGGBB values')
-  list = [...new Set(list.map((c) => String(c).trim().toLowerCase()).filter(Boolean))]
-  if (list.length > 10) throw new HttpError(400, 'Use at most 10 colours')
-  const bad = list.find((c) => !HEX.test(c))
-  if (bad) throw new HttpError(400, `"${bad}" is not a #RRGGBB colour`)
-  const id = String(styleId ?? '').trim() || null
-  if (id && !(await listStyles(env)).some((s) => s.id === id)) throw new HttpError(400, 'Unknown style')
-  return { motif: m, colors: list, styleId: id }
-}
-
-const withMotif = (prompt, motif) => (motif ? combine(prompt, `Motif focus: ${motif}`) : prompt)
-
-export async function getStyles(request, env) {
-  return json({ styles: await listStyles(env) }, { headers: { 'Cache-Control': 'public, max-age=600' } })
-}
-
 export async function uploadDesign(request, env) {
   const { creator } = await requireCreator(request, env)
   let form
@@ -180,7 +136,6 @@ export async function uploadDesign(request, env) {
   if (!UPLOAD_TYPES.has(file.type)) throw new HttpError(415, 'Upload a PNG, JPEG or WebP image')
   if (file.size > MAX_UPLOAD) throw new HttpError(413, 'Images must be 10 MB or smaller')
   const extra = cleanPrompt(form.get('prompt'))
-  const controls = await readControls(env, { motif: form.get('motif'), colors: form.get('colors'), styleId: form.get('styleId') })
   const variations = Math.max(1, Math.min(4, parseInt(form.get('variations') ?? '3', 10) || 3))
 
   const bytes = await file.arrayBuffer()
@@ -206,7 +161,7 @@ export async function uploadDesign(request, env) {
 
   const patterns = []
   for (let i = 0; i < variations; i++) {
-    patterns.push(await startPattern(env, creator.id, { prompt: combine(VARIATION_PROMPTS[i], extra), designId: id, referenceId, controls }))
+    patterns.push(await startPattern(env, creator.id, { prompt: combine(VARIATION_PROMPTS[i], extra), designId: id, referenceId }))
   }
   return json({ design: designJson(design), patterns: patterns.map(patternJson) }, { status: 201 })
 }
@@ -223,10 +178,8 @@ export async function listPatterns(request, env) {
 export async function createPattern(request, env) {
   const { creator } = await requireCreator(request, env)
   const body = await readJson(request)
-  const controls = await readControls(env, body)
-  // A motif on its own is enough to go on.
-  const prompt = cleanPrompt(body.prompt) || (controls.motif ? `Seamless repeating pattern of ${controls.motif}` : '')
-  if (!prompt) throw new HttpError(400, 'Describe the pattern you want, or give it a motif')
+  const prompt = cleanPrompt(body.prompt)
+  if (!prompt) throw new HttpError(400, 'Describe the pattern you want')
   let referenceId = null
   let designId = null
   if (body.designId) {
@@ -235,7 +188,7 @@ export async function createPattern(request, env) {
     designId = design.id
     referenceId = design.arcade_reference_id
   }
-  const row = await startPattern(env, creator.id, { prompt, designId, referenceId, controls })
+  const row = await startPattern(env, creator.id, { prompt, designId, referenceId })
   return json({ pattern: patternJson(row) }, { status: 201 })
 }
 
