@@ -17,7 +17,9 @@ Creator  = { id, email, name }
 Shop     = { id, slug, name, tagline, url }               // url = `/s/${slug}`
 Design   = { id, filename, imageUrl, referenceId, createdAt }
 Pattern  = { id, designId|null, prompt, status: 'pending'|'succeeded'|'failed',
-             imageUrl|null, thumbUrl|null, width|null, height|null, error|null, createdAt }
+             imageUrl|null, thumbUrl|null, width|null, height|null, error|null,
+             motif|null, colors: string[] /* #rrggbb */, styleId|null, createdAt }
+Style    = { id, name }                                   // Arcade models/list
 Product  = { id, slot, categoryName, status: 'pending'|'succeeded'|'failed', error|null,
              title|null, selectionLabel|null, unitPrice: { amount: string, currency } | null,
              imageUrl|null,                      // Arcade product mockup, copied to R2
@@ -38,9 +40,10 @@ Product  = { id, slot, categoryName, status: 'pending'|'succeeded'|'failed', err
 | GET | /api/shops/:slug | – | `{ shop, products: Product[] }` (succeeded products only) |
 | POST | /api/shops/:slug/checkout | `{ lines: [{ productId, quantity }] }` | `{ checkoutUrl, checkoutId }` |
 | GET 🔒 | /api/designs | – | `{ designs: Design[] }` |
-| POST 🔒 | /api/designs | multipart: `file` (png/jpeg/webp ≤ 10 MB), `prompt?`, `variations?` (1–4, default 3) | `{ design, patterns: Pattern[] }` |
+| POST 🔒 | /api/designs | multipart: `file` (png/jpeg/webp ≤ 10 MB), `prompt?`, `variations?` (1–4, default 3), `motif?`, `colors?` (JSON array or comma list of #rrggbb), `styleId?` | `{ design, patterns: Pattern[] }` |
 | GET 🔒 | /api/patterns | – | `{ patterns: Pattern[] }` (newest first; refreshes up to 3 pending jobs per call) |
-| POST 🔒 | /api/patterns | `{ prompt, designId? }` | `{ pattern }` (text-only or guided by an uploaded design) |
+| POST 🔒 | /api/patterns | `{ prompt?, designId?, motif?, colors?, styleId? }` (prompt or motif required) | `{ pattern }` (text-only or guided by an uploaded design) |
+| GET | /api/styles | – | `{ styles: Style[] }` (Arcade style models, cached 10 min) |
 | GET 🔒 | /api/shop/products | – | `{ products: Product[] }` (all statuses; refreshes pending) |
 | POST 🔒 | /api/shop/products | `{ slot, patternId }` | `{ product }` (replaces the slot's current product; 400 for display-only slots like `rug`, 409 if the pattern isn't succeeded) |
 | DELETE 🔒 | /api/shop/products/:slot | – | `{ ok: true }` |

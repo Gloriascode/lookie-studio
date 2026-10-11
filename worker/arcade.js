@@ -51,3 +51,13 @@ export async function defaultSelections(env, categoryId) {
   const cat = await arcade(env, 'categories/get', { categoryId, selections: {} })
   return cat.selections
 }
+
+// Style models (models/list) for patterns/create's modelId; also stable, same cache policy.
+let stylesCache = null
+export async function listStyles(env) {
+  if (!stylesCache || Date.now() - stylesCache.at > 10 * 60_000) {
+    const { items } = await arcade(env, 'models/list', {})
+    stylesCache = { at: Date.now(), items: items.map((m) => ({ id: m.modelId, name: m.name })) }
+  }
+  return stylesCache.items
+}
