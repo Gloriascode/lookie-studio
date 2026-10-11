@@ -1,11 +1,13 @@
 // The conservatory from ixi (canvas "Lookie", model3d "glass garden"), optimised by
 // scripts/optimize-garden.mjs. The export carries flat CAD colours; here every mesh gets a
 // material by role so the room reads as painted iron, glazed tile, glass and linen.
-import { useLayoutEffect, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { SLOT_BY_ID } from '../slots'
-import { makeProductMaterial } from './productMaterial'
+import { makeProductMaterial, withVertexAo } from './productMaterial'
+import { setPatternAnisotropy } from './patternTextures'
 import { ProductEffects, slotMeshes, useInteractiveSlots, useProductPointer } from './Products'
 
 export const GARDEN_URL = '/models/glass-garden.glb'
@@ -42,8 +44,11 @@ function makeMaterials() {
       name: 'product',
       color: '#fbf9f4',
       roughness: 0.85,
-      sheen: 0.6,
+      // Fabric presets in productMaterial.js set roughness/sheen per product.
+      sheen: 1,
       sheenRoughness: 0.75,
+      // Matte cloth: the bright sky reflected at full strength greys out dark prints.
+      envMapIntensity: 0.8,
       sheenColor: new THREE.Color('#ffffff'),
     }),
   }
@@ -67,10 +72,16 @@ function roleFor(rawName) {
 const NO_RAYCAST = new Set(['glass', 'grout', 'terracotta', 'glazed', 'wood', 'textured'])
 const noRaycast = () => {}
 
+
 export function GlassGarden(props) {
   const { scene } = useGLTF(GARDEN_URL)
   const materials = useMemo(makeMaterials, [])
+  const gl = useThree((s) => s.gl)
   const interactive = useInteractiveSlots()
+
+  // Prints are viewed at grazing angles a lot (tablecloth, duvet): use all the anisotropy
+  // the GPU offers. Runs after ProductEffects' own default (child effects run first).
+  useEffect(() => setPatternAnisotropy(gl.capabilities.getMaxAnisotropy()), [gl])
   const pointer = useProductPointer(interactive)
 
   useLayoutEffect(() => {
@@ -92,10 +103,12 @@ export function GlassGarden(props) {
         })
         if (src.map) src.map.anisotropy = 8
       } else if (role === 'product') {
-        o.material = makeProductMaterial(materials.product, SLOT_BY_ID[o.userData.slot])
+        const attrs = o.geometry.attributes
+        o.material = makeProductMaterial(materials.product, SLOT_BY_ID[o.userData.slot], { hasUv: !!attrs.uv, hasAo: !!attrs._ao })
         o.material.name = `product:${product}`
       } else {
-        o.material = materials[role]
+        // Baked vertex AO (from the asset pipeline) when this mesh carries it.
+        o.material = o.geometry.attributes._ao && role !== 'glass' ? withVertexAo(materials[role]) : materials[role]
       }
 
       const isGlass = role === 'glass'

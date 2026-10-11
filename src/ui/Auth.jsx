@@ -52,7 +52,7 @@ export function AuthCard() {
         </h1>
         <p className="card__lede">
           {signup
-            ? 'Upload your designs, turn them into patterns, and dress the glass garden with products people can buy.'
+            ? 'Upload your designs, turn them into patterns, and dress Lookie Studio with products people can buy.'
             : 'Sign in to keep designing your shop.'}
         </p>
 

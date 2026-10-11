@@ -1114,7 +1114,12 @@ button.tile:hover img {
 .product-status--failed {
   border-color: rgba(163, 55, 43, 0.3);
 }
+.product-status__zoom {
+  flex: none;
+  border-radius: 10px;
+}
 .product-status__img {
+  display: block;
   width: 72px;
   height: 72px;
   border-radius: 10px;
@@ -1276,7 +1281,11 @@ button.tile:hover img {
   aspect-ratio: 1;
   background: #ece5d8;
 }
-.product-card__media > img:first-child {
+.product-card__zoom {
+  width: 100%;
+  height: 100%;
+}
+.product-card__zoom img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1289,8 +1298,16 @@ button.tile:hover img {
   height: 52px;
   border-radius: 10px;
   border: 3px solid #fff;
-  object-fit: cover;
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.product-card__chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.product-card__chip .zoomable__hint {
+  display: none;
 }
 .product-card__body {
   padding: 20px 22px 24px;
@@ -1676,5 +1693,192 @@ button.tile:hover img {
   .app--panel .toast {
     top: 58px;
     bottom: auto;
+  }
+}
+
+/* ── Zoomable images + lightbox ─────────────────────────────── */
+.zoomable {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+.zoomable img {
+  transition: transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.zoomable:hover img {
+  transform: scale(1.03);
+}
+.zoomable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.zoomable__hint {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--glass-strong);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.zoomable:hover .zoomable__hint,
+.zoomable:focus-visible .zoomable__hint {
+  opacity: 1;
+  transform: none;
+}
+.product-status__zoom .zoomable__hint {
+  right: 4px;
+  top: 4px;
+  width: 22px;
+  height: 22px;
+}
+.product-status__zoom .zoomable__hint svg {
+  width: 11px;
+  height: 11px;
+}
+@media (hover: none) {
+  /* Touch: no hover, so always show the expand badge on the big image. */
+  .product-card__zoom .zoomable__hint {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 56px 72px;
+  background: rgba(20, 24, 21, 0.86);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: lightbox-in 220ms ease both;
+  cursor: zoom-out;
+}
+@keyframes lightbox-in {
+  from {
+    opacity: 0;
+  }
+}
+.lightbox__figure {
+  position: relative;
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 100%;
+  max-height: 100%;
+  cursor: default;
+}
+.lightbox__img {
+  display: block;
+  max-width: min(1200px, calc(100vw - 144px));
+  max-height: calc(100vh - 140px);
+  object-fit: contain;
+  border-radius: 12px;
+  background: #ece5d8;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+.lightbox__img--loaded {
+  opacity: 1;
+  transform: none;
+}
+.lightbox__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -12px 0 0 -12px;
+}
+.lightbox__caption {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
+}
+.lightbox__count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.lightbox__close,
+.lightbox__nav {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.lightbox__close:hover,
+.lightbox__nav:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.lightbox__close:focus-visible,
+.lightbox__nav:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.lightbox__close {
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  font-size: 26px;
+  line-height: 1;
+}
+.lightbox__nav {
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  font-size: 30px;
+  line-height: 1;
+}
+.lightbox__nav--prev {
+  left: 16px;
+}
+.lightbox__nav--next {
+  right: 16px;
+}
+@media (max-width: 768px) {
+  .lightbox {
+    padding: 64px 12px 24px;
+  }
+  .lightbox__img {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 150px);
+  }
+  .lightbox__nav {
+    top: auto;
+    bottom: 20px;
+    margin-top: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lightbox,
+  .lightbox__img,
+  .zoomable img {
+    animation: none;
+    transition: none;
   }
 }

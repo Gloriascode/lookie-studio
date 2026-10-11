@@ -1,7 +1,7 @@
 // Everything that makes the products (pillows, curtains, duvet...) alive in the scene:
 //  - pointer hover / click on product meshes -> appStore.hoveredSlot / selectedSlot
 //  - warm rim highlight for the hovered and the selected product
-//  - pattern textures from slotTextureMap(appStore), cross-faded in as they load
+//  - pattern textures from slotTextureMap(appStore) (products, preview), cross-faded in as they load
 //  - camera close-up on the selected product (tourStore.focus), back to the tour on clear
 //
 // The meshes are registered by <GlassGarden> into `slotMeshes`; this module never walks

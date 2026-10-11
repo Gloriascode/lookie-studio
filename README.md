@@ -1,6 +1,6 @@
 # Lookie Studio
 
-A 3D shopfront in a sunlit Victorian glass garden. **Creators** upload their designs, turn
+A 3D shopfront in a sunlit Victorian conservatory. **Creators** upload their designs, turn
 them into seamless patterns with the [Arcade](https://platform.arcade.ai) API, put them on
 the furniture and textiles in the room, and publish them as real print-on-demand products at
 their own link (`/s/<slug>`). **Shoppers** walk the room, click a product, and check out

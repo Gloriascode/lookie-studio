@@ -17,8 +17,8 @@ export const STOPS = [
   },
   {
     id: 'approach',
-    navLabel: 'The Glass Garden',
-    title: 'The Glass Garden',
+    navLabel: 'Lookie Studio',
+    title: 'Lookie Studio',
     subtitle: 'A shopfront that grows with your designs',
     pos: [2.2, 1.7, 12],
     target: [0, 2, 0],

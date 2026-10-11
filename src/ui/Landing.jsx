@@ -62,7 +62,7 @@ export function Landing() {
           <>
             <span className="eyebrow">Lookie Studio</span>
             <h1 id="landing-title" className="card__title card__title--xl">
-              A glass garden, dressed in your prints.
+              A sunlit studio, dressed in your prints.
             </h1>
             <p className="card__lede">Wander through creators’ rooms and shop what you love, or open your own studio and make the room yours.</p>
             <div className="choices">

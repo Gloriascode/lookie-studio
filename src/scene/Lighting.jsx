@@ -11,6 +11,7 @@ import { useThree } from '@react-three/fiber'
 import { Environment, Lightformer, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import { useQuality } from '../perf/quality'
+import { fabricSun } from './productMaterial'
 
 // Sun: ~24° above the horizon, from the front-left, so the iron frame throws long diagonal
 // shadows across the tiled floor inside.
@@ -49,6 +50,12 @@ export function Lighting() {
   const refreshShadows = useShadowRefresh()
   const sunPosition = useMemo(() => SUN_DIR.clone().multiplyScalar(100), [])
 
+  // Fabric translucency (curtains) needs the sun's direction and colour.
+  useEffect(() => {
+    fabricSun.uSunDir.value.copy(SUN_DIR)
+    if (sun.current) fabricSun.uSunColor.value.copy(sun.current.color).multiplyScalar(sun.current.intensity)
+  }, [])
+
   useEffect(() => {
     gl.shadowMap.autoUpdate = false
     refreshShadows()
@@ -79,7 +86,7 @@ export function Lighting() {
       </Environment>
 
       {/* Fill for the Lambert foliage (it ignores the environment map). */}
-      <hemisphereLight args={['#cfe2f3', '#5d6b3a', 0.45]} />
+      <hemisphereLight args={['#cfe2f3', '#5d6b3a', 0.38]} />
 
       <directionalLight
         ref={sun}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ZoomableImage, productImages } from './Lightbox'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
 import { SLOT_BY_ID } from '../slots'
@@ -64,13 +65,17 @@ function ProductCard({ product, slug, onAdded }) {
       </button>
       <div className="panel__scroll">
         <div className="product-card__media">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={`${product.title}`} />
-          ) : (
-            <img src={product.pattern?.imageUrl} alt="" className="product-card__swatch" />
-          )}
+          <ZoomableImage images={productImages(product)} className="product-card__zoom">
+            {product.imageUrl ? (
+              <img src={product.imageUrl} alt={`${product.title}`} />
+            ) : (
+              <img src={product.pattern?.imageUrl} alt="" className="product-card__swatch" />
+            )}
+          </ZoomableImage>
           {product.pattern?.thumbUrl && product.imageUrl && (
-            <img className="product-card__chip" src={product.pattern.thumbUrl} alt="Pattern swatch" />
+            <ZoomableImage images={productImages(product)} index={1} className="product-card__chip" label="View the print">
+              <img src={product.pattern.thumbUrl} alt="Pattern swatch" />
+            </ZoomableImage>
           )}
         </div>
         <div className="product-card__body">

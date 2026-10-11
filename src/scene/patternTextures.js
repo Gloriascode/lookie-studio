@@ -2,10 +2,11 @@
 // it is disposed when the last product lets go of it.
 //
 // Arcade pattern images can be several thousand pixels square. A tile covers 0.2-0.8 m in
-// the scene, so anything above MAX_SIZE is downscaled once on load (saves a lot of VRAM).
+// the scene, so anything above MAX_SIZE is downscaled once on load (saves VRAM; Arcade's
+// current 1024px patterns load untouched).
 import * as THREE from 'three'
 
-const MAX_SIZE = 1024
+const MAX_SIZE = 2048
 const cache = new Map() // url -> { refs, promise, texture }
 let anisotropy = 8
 

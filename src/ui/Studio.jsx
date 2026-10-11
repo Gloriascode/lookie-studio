@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ZoomableImage, productImages } from './Lightbox'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
 import { SLOTS, SLOT_BY_ID } from '../slots'
@@ -207,7 +208,11 @@ function SlotView({ slotId }) {
         <div className={`product-status product-status--${product.status}`} aria-live="polite">
           {product.status === 'succeeded' ? (
             <>
-              {product.imageUrl && <img className="product-status__img" src={product.imageUrl} alt={`${product.title} mockup`} />}
+              {product.imageUrl && (
+                <ZoomableImage images={productImages(product)} className="product-status__zoom" label="View the Arcade mockup larger">
+                  <img className="product-status__img" src={product.imageUrl} alt={`${product.title} mockup`} />
+                </ZoomableImage>
+              )}
               <div>
                 <strong>{product.title}</strong>
                 {product.selectionLabel && <small>{product.selectionLabel}</small>}

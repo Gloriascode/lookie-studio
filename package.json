@@ -28,7 +28,9 @@
     "draco3dgltf": "^1.5.7",
     "meshoptimizer": "^1.3.0",
     "sharp": "^0.34.5",
+    "three-mesh-bvh": "^0.9.16",
     "vite": "^7.3.7",
-    "wrangler": "^4.149.0"
+    "wrangler": "^4.149.0",
+    "xatlasjs": "^0.2.0"
   }
 }
