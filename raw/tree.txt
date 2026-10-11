@@ -1,0 +1,50 @@
+Grout ground t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12 mat[0.01,0.01,0.01,1 r0.7 m0 OPAQUE] bb=[-3400,-4000,-212]..[3400.03,4000,-12.05] kids=0
+Lawn t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12 mat[0.27,0.38,0.18,1 r0.95 m0 OPAQUE] bb=[-10000,-10000,-77]..[10000,10000,-66.93] kids=0
+Orange tiles t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1716 mat[0.73,0.14,0.03,1 r0.55 m0 OPAQUE] bb=[-3095,-3695,-12]..[3094.96,3695,-0.05] kids=0
+Orange tiles t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1440 mat[0.73,0.14,0.03,1 r0.55 m0 OPAQUE] bb=[-2795,-3395,-12]..[2795,3395,0.02] kids=0
+White diamond tiles t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1560 mat[0.89,0.86,0.8,1 r0.5 m0 OPAQUE] bb=[-2899.97,-3799.97,-12]..[2899.92,3799.97,-0.06] kids=0
+White diamond tiles t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1584 mat[0.89,0.86,0.8,1 r0.5 m0 OPAQUE] bb=[-3199.97,-3499.97,-12]..[3200.01,3499.97,-0.04] kids=0
+White frame t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=6500 mat[0.93,0.91,0.87,1 r0.45 m0 OPAQUE] bb=[-3265,-3950,0]..[3264.99,3950,4409.94] kids=0
+Knee wall t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=260 mat[0.93,0.91,0.87,1 r0.45 m0 OPAQUE] bb=[-3250,-3850,0]..[3250.03,3850,320.05] kids=0
+Arches + rings t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=25932 mat[0.93,0.91,0.87,1 r0.45 m0 OPAQUE] bb=[-3220,-3830,1999.45]..[3219.96,3830,4119.96] kids=0
+Arched ribs t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=3860 mat[0.93,0.91,0.87,1 r0.45 m0 OPAQUE] bb=[-3238.41,-3830,1976.55]..[3238.37,3830,3844.95] kids=0
+Glass walls t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=260 mat[0.78,0.87,0.84,0.16 r0.05 m0 BLEND] bb=[-3204,-3804,320]..[3203.97,3804,2699.97] kids=0
+Glass roof W t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=52 mat[0.78,0.87,0.84,0.16 r0.05 m0 BLEND] bb=[-3201.92,-3800,2751.36]..[1.94,3800,4358.68] kids=0
+Glass roof E t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=52 mat[0.78,0.87,0.84,0.16 r0.05 m0 BLEND] bb=[-1.92,-3800,2751.36]..[3201.94,3800,4358.68] kids=0
+Glass gables t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=76 mat[0.78,0.87,0.84,0.16 r0.05 m0 BLEND] bb=[-3200,-3804,2700]..[3199.96,3804,4299.96] kids=0
+Daybed t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=10472 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-3115,-514.98,0]..[-885,1014.99,1073.99] kids=0
+Armchair A t=-750,2550,0 s=1,1,1 r=0,0,0.07,1 mesh tris=9300 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-1208.81,2072.21,0]..[-282.43,3022.58,920] kids=0
+Dining table t=1850,900,0 s=1,1,1 r=0,0,0,1 mesh tris=372 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1400,450,0]..[2300,1350,760] kids=0
+Dining chair S t=1850,300,0 s=1,1,1 r=0,0,1,0 mesh tris=1220 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1620,13.47,-1.42]..[2080,560,962.05] kids=0
+Side table + lamp t=-1050,1300,0 s=1,1,1 r=0,0,0,1 mesh tris=9828 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-1300,1090,0]..[-799.99,1510.01,1280] kids=0
+Tea cart + tea set t=2500,-500,0 s=1,1,1 r=0,0,0.71,0.71 mesh tris=23964 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[2255,-911,0]..[2745,-58.99,949] kids=0
+Rug t=-100,900,0 s=1,1,1 r=0,0,0,1 mesh tris=16428 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-950,-414.46,0]..[749.99,2214.46,9.99] kids=0
+Armchair B t=650,2550,0 s=1,1,1 r=0,0,-0.07,1 mesh tris=9300 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[182.43,2072.21,0]..[1108.82,3022.58,920] kids=0
+Dining chair N t=1850,1500,0 s=1,1,1 r=0,0,0,1 mesh tris=1220 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1620,1240,-1.42]..[2080,1786.53,962.05] kids=0
+Dining chair W t=1250,900,0 s=1,1,1 r=0,0,0.71,0.71 mesh tris=1220 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[963.47,670,-1.42]..[1510,1130,962.05] kids=0
+Dining chair E t=2450,900,0 s=1,1,1 r=0,0,-0.71,0.71 mesh tris=1220 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[2190,670,-1.42]..[2736.53,1130,962.05] kids=0
+Cutout lady + scarf t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=2 mat[1,1,1,1 r0.85 m0 BLEND TEX] bb=[1307.6,1450,-79.5]..[2392.4,1450,1374.6] kids=0
+Cutout lady long hair t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=2 mat[1,1,1,1 r0.85 m0 BLEND TEX] bb=[1803,900,-63.5]..[2834.41,900,1319] kids=0
+Cutout shiba t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=2 mat[1,1,1,1 r0.85 m0 BLEND TEX] bb=[-643.4,250,72.3]..[73.4,250,789.1] kids=0
+Strut lady 1 t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12 mat[0.49,0.29,0.11,1 r0.95 m0 OPAQUE] bb=[1795,1462.23,379.66]..[1905,1677.57,901.14] kids=0
+Strut lady 2 t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12 mat[0.49,0.29,0.11,1 r0.95 m0 OPAQUE] bb=[2445,912.22,366.71]..[2555,1112.58,851.09] kids=0
+Strut dog t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12 mat[0.49,0.29,0.11,1 r0.95 m0 OPAQUE] bb=[-305,262.22,194.34]..[-195,365.18,437.66] kids=0
+Rug top t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=2 mat[1,1,1,1 r0.95 m0 OPAQUE TEX] bb=[-950,-350,10.5]..[750.01,2150,10.5] kids=0
+Curtains t=0,3700,0 s=1,1,1 r=0,0,0,1 mesh tris=41556 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-1376.5,3648,4.76]..[1376.5,3799.99,2579.99] kids=0
+Tablecloth t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=12794 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1330.67,385.98,299.84]..[2367.79,1445.81,762.19] kids=0
+Placemats ×4 t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=48 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1435,485,761.2]..[2265,1315,767.2] kids=0
+Napkins ×4 t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=80 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[1550,600,764.2]..[2150,1200,877.2] kids=0
+Tea towel t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=692 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[2387,-85.1,500]..[2613,-53.9,895.5] kids=0
+Fabric by the yard (bolt) t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=940 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[2298,-912.28,109.94]..[2702,-295,373.6] kids=0
+Rectangular lampshade t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1584 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-1241,1169,960]..[-859,1431,1241.5] kids=0
+Decorative pillow t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=1956 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-1025.36,2557.14,465.87]..[-508.33,2782.51,898.13] kids=0
+Outdoor lumbar pillow t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=9300 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[391.56,2599.34,467.96]..[948.81,2784.44,806.04] kids=0
+Floor pillow t=0,0,0 s=1,1,1 r=0,0,0,1 mesh tris=9796 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-640.55,-137.92,9.8]..[140.55,637.92,195.01] kids=0
+Silk scarf (on armchair B) t=650,2550,0 s=1,1,1 r=0,0,-0.07,1 mesh tris=2700 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[531.58,2760.11,315]..[738.44,2988.78,922] kids=0
+Duvet t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=1956 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-3043.06,-501.64,312.65]..[-947.25,965.2,548.18] kids=0
+Shams ×2 t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=4168 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-2762.54,389.67,540.12]..[-1443.81,880.46,998.49] kids=0
+Quilted shams ×2 t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=18752 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-2683.18,205.99,542.77]..[-1431.22,720.95,961.22] kids=0
+Quilt t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=7008 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-2793.34,-521.86,149.82]..[-2105.27,38.28,586.63] kids=0
+Decorative pillow (daybed) t=-2000,250,0 s=1,1,1 r=0,0,0.13,0.99 mesh tris=1956 mat[1,1,1,1 r0.5 m0.1 OPAQUE] bb=[-2177.78,192.63,545.54]..[-1633.02,451.24,944.47] kids=0
+textures  image/png 764,1024 277KB |  image/png 764,1024 249KB |  image/png 1024,1024 355KB |  image/png 1696,2528 8306KB
+materials 48 meshes 48 nodes 48
