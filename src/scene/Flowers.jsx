@@ -120,7 +120,18 @@ export function Flowers() {
     for (const g of groups) for (const mesh of g.meshes) mesh.count = Math.floor(g.max * q.flowers)
   }, [groups, q.flowers])
 
-  useEffect(() => () => groups.forEach((g) => g.meshes.forEach((m) => m.dispose())), [groups])
+  // Each part's geometry and material were cloned for instancing: free them with the meshes.
+  useEffect(
+    () => () =>
+      groups.forEach((g) =>
+        g.meshes.forEach((m) => {
+          m.geometry.dispose()
+          m.material.dispose()
+          m.dispose()
+        }),
+      ),
+    [groups],
+  )
 
   return (
     <group>

@@ -101,6 +101,15 @@ export function Grass() {
   }, [geometry, material])
 
   useEffect(() => () => chunks.forEach((c) => c.mesh.dispose()), [chunks])
+  // The normalised clump geometry and its material are ours (cloned from the GLB): free them
+  // when the room goes.
+  useEffect(
+    () => () => {
+      geometry.dispose()
+      material.dispose()
+    },
+    [geometry, material],
+  )
 
   // Distance LOD: full density within 12 m, fading to 12% at the lawn edge.
   const lastCam = useRef(new THREE.Vector3(Infinity, 0, 0))

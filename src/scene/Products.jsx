@@ -4,22 +4,41 @@
 //  - pattern textures from slotTextureMap(appStore) (products, preview), cross-faded in as they load
 //  - camera close-up on the selected product (tourStore.focus), back to the tour on clear
 //
-// The meshes are registered by <GlassGarden> into `slotMeshes`; this module never walks
-// the scene graph per frame. All animation lives in one useFrame that returns immediately
+// The meshes are registered by the active room (<GlassGarden>, <Bedroom>) through
+// registerSlotMesh; a slot may span several meshes (a pair of drapes), which share ONE
+// material so pattern and highlight uniforms apply to all of them at once. This module never
+// walks the scene graph per frame. All animation lives in one useFrame that returns immediately
 // when nothing is fading.
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { appStore, slotTextureMap, useApp } from '../state/appStore'
-import { SLOTS, SLOT_BY_ID } from '../slots'
-import { STOPS } from '../tour/stops'
+import { SLOT_BY_ID, slotsInScene } from '../slots'
+import { SCENE_BY_ID } from '../scenes'
+import { stopsFor } from '../tour/stops'
 import { stopPose } from '../tour/ScrollCameraDirector'
 import { tourStore } from '../tour/tourStore'
 import { BLANK_TEXTURE, makeOutlineMaterial } from './productMaterial'
 import { acquirePattern, releasePattern, setPatternAnisotropy } from './patternTextures'
 
-/** slot id -> product Mesh (filled by GlassGarden once the GLB is in). */
+/** slot id -> product Mesh[] of the room on screen (filled once its GLB is in). */
 export const slotMeshes = new Map()
+
+export function registerSlotMesh(slot, mesh) {
+  const list = slotMeshes.get(slot)
+  if (!list) slotMeshes.set(slot, [mesh])
+  else if (!list.includes(mesh)) list.push(mesh)
+}
+
+/** Forget a room's meshes (it is unmounting). */
+export function unregisterSlotMeshes(meshes) {
+  const gone = new Set(meshes)
+  for (const [slot, list] of slotMeshes) {
+    const keep = list.filter((m) => !gone.has(m))
+    if (keep.length) slotMeshes.set(slot, keep)
+    else slotMeshes.delete(slot)
+  }
+}
 
 const PATTERN_FADE = 1 / 0.6 // per second
 const HIGHLIGHT_FADE = 1 / 0.18
@@ -32,12 +51,16 @@ const states = new Map() // slot -> state
 const animating = new Set()
 
 function stateFor(slot) {
+  const u = slotMeshes.get(slot)?.[0]?.material.userData.u
+  if (!u) return null
   let st = states.get(slot)
   if (!st) {
-    const mesh = slotMeshes.get(slot)
-    if (!mesh?.material.userData.u) return null
-    st = { slot, u: mesh.material.userData.u, want: null, aUrl: null, bUrl: null, tA: 0, tB: 0, tHl: 0 }
+    st = { slot, u, want: null, aUrl: null, bUrl: null, tA: 0, tB: 0, tHl: 0 }
     states.set(slot, st)
+  } else if (st.u !== u) {
+    // The room rebuilt its materials (remount): carry the pattern state over to the new ones.
+    for (const k of ['uTexA', 'uTexB', 'uAmountA', 'uAmountB', 'uHighlight']) u[k].value = st.u[k].value
+    st.u = u
   }
   return st
 }
@@ -54,7 +77,8 @@ function setPattern(slot, url) {
   }
   acquirePattern(url).then(
     (tex) => {
-      if (st.want !== url) return releasePattern(url)
+      // Superseded, or the room unmounted while this loaded: don't hold on to it.
+      if (st.dead || st.want !== url) return releasePattern(url)
       if (!st.aUrl || st.u.uAmountA.value < 0.01) {
         if (st.aUrl) releasePattern(st.aUrl)
         st.aUrl = url
@@ -114,43 +138,73 @@ function step(st, dt) {
 }
 
 // Two outlines: a bold one following the hovered product, a fine one on the selected one.
+// Each is a small pool of hull meshes (one per mesh of the slot) sharing one material.
 const outlines = []
+const EMPTY_GEOMETRY = new THREE.BufferGeometry()
 function makeOutline(width, maxOpacity) {
-  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), makeOutlineMaterial())
-  mesh.material.uniforms.uWidth.value = width
-  mesh.matrixAutoUpdate = false
-  mesh.visible = false
-  mesh.raycast = () => {}
-  mesh.renderOrder = 3
-  const o = { mesh, slot: null, target: 0, maxOpacity }
+  const material = makeOutlineMaterial()
+  material.uniforms.uWidth.value = width
+  const group = new THREE.Group()
+  group.matrixAutoUpdate = false
+  group.visible = false
+  const o = { group, material, hulls: [], slot: null, target: 0, maxOpacity }
   outlines.push(o)
   return o
 }
 const hoverOutline = makeOutline(0.0042, 0.95)
 const selectOutline = makeOutline(0.0026, 0.7)
 
+function hull(o, i) {
+  let mesh = o.hulls[i]
+  if (!mesh) {
+    mesh = new THREE.Mesh(EMPTY_GEOMETRY, o.material)
+    mesh.matrixAutoUpdate = false
+    mesh.raycast = () => {}
+    mesh.renderOrder = 3
+    o.hulls.push(mesh)
+    o.group.add(mesh)
+  }
+  return mesh
+}
+
 function pointOutline(o, slot) {
   if (slot) {
-    const target = slotMeshes.get(slot)
-    if (!target) return
+    const targets = slotMeshes.get(slot)
+    if (!targets) return
     if (o.slot !== slot) {
       o.slot = slot
-      o.mesh.geometry = target.geometry
-      o.mesh.matrix.copy(target.matrixWorld)
-      o.mesh.matrixWorld.copy(target.matrixWorld)
-      o.mesh.material.uniforms.uOpacity.value = 0
+      o.hulls.forEach((h, i) => (h.visible = i < targets.length))
+      targets.forEach((t, i) => {
+        const h = hull(o, i)
+        h.visible = true
+        h.geometry = t.geometry
+        h.matrix.copy(t.matrixWorld)
+        h.matrixWorld.copy(t.matrixWorld)
+      })
+      o.material.uniforms.uOpacity.value = 0
     }
     o.target = o.maxOpacity
   } else {
     o.target = 0
   }
-  o.mesh.visible = true
+  o.group.visible = true
+}
+
+/** A room unmounted: its geometries are about to be disposed, so let go of them. */
+function resetOutlines() {
+  for (const o of outlines) {
+    o.slot = null
+    o.target = 0
+    o.material.uniforms.uOpacity.value = 0
+    o.group.visible = false
+    for (const h of o.hulls) h.geometry = EMPTY_GEOMETRY
+  }
 }
 
 function stepOutline(o, dt) {
-  const u = o.mesh.material.uniforms.uOpacity
+  const u = o.material.uniforms.uOpacity
   if (u.value === o.target) {
-    if (o.target === 0) o.mesh.visible = false
+    if (o.target === 0) o.group.visible = false
     return false
   }
   const d = o.target - u.value
@@ -180,45 +234,67 @@ const _box = new THREE.Box3()
 const _center = new THREE.Vector3()
 const _size = new THREE.Vector3()
 const _dir = new THREE.Vector3()
-const ROOM = { x: 3.0, z: 3.55, yMin: 0.45, yMax: 2.4 } // stay inside the glass
 
 const _ray = new THREE.Raycaster()
 const _cand = new THREE.Vector3()
+const _free = new THREE.Vector3()
+const _meshBox = new THREE.Box3()
 const _to = new THREE.Vector3()
 const _probe = new THREE.Vector3()
 
-/** True if nothing but the slot itself (or other soft products) sits between the two points. */
-function clearLine(root, mesh, from, to) {
+/** True if nothing but products (soft, see-through enough) sits between the two points. */
+function clearLine(root, from, to) {
   _to.subVectors(to, from)
   const len = _to.length()
   _ray.set(from, _to.divideScalar(len))
   _ray.near = 0.02
   _ray.far = len
   for (const hit of _ray.intersectObject(root, true)) {
-    if (hit.object === mesh || hit.object.userData.slot) continue
+    if (hit.object.userData.slot) continue
     return false
   }
   return true
 }
 
 /**
- * Close-up camera pose for a product: framed to fill ~60% of the view, inside the glass,
+ * Close-up camera pose for a product: framed to fill ~60% of the view, inside its room,
  * with a clear line of sight. Prefers the side its tour stop sees it from; if furniture is
- * in the way it tries the other sides and steeper angles.
+ * in the way it tries the other sides and steeper angles. Several meshes (a pair of drapes)
+ * are framed together.
  */
 export function computeSlotPose(slot, camera) {
-  const mesh = slotMeshes.get(slot)
+  const meshes = slotMeshes.get(slot)
   const def = SLOT_BY_ID[slot]
-  if (!mesh || !def) return null
-  let root = mesh
+  if (!meshes?.length || !def) return null
+  let root = meshes[0]
   while (root.parent) root = root.parent
-  _box.setFromObject(mesh)
+  const room = SCENE_BY_ID[def.scene] ?? SCENE_BY_ID.garden
+  const ROOM = room.camBounds
+  _box.makeEmpty()
+  for (const m of meshes) _box.expandByObject(m)
+  // A pair spread across the room (drapes at both windows) can't be framed together from
+  // inside it: frame the piece nearest the middle of the room (most context, least of the
+  // world outside an open side).
+  _box.getSize(_size)
+  if (meshes.length > 1 && Math.max(_size.x, _size.z) > 2.5) {
+    _probe.set(...room.interior)
+    let best = Infinity
+    for (const m of meshes) {
+      _meshBox.setFromObject(m)
+      const d = _meshBox.distanceToPoint(_probe)
+      if (d < best) {
+        best = d
+        _box.copy(_meshBox)
+      }
+    }
+  }
   _box.getCenter(_center)
   _box.getSize(_size)
   const radius = _size.length() / 2
 
   // Preferred side: towards the slot's tour stop camera (stops were framed by hand).
-  const stop = STOPS.find((s) => s.id === def.stop) ?? STOPS[tourStore.active]
+  const stops = stopsFor(def.scene)
+  const stop = stops.find((s) => s.id === def.stop) ?? stops[tourStore.active] ?? stops[0]
   const from = stopPose(stop).pos
   _dir.set(from[0] - _center.x, 0, from[2] - _center.z)
   if (_dir.lengthSq() < 1e-4) _dir.set(0, 0, 1)
@@ -232,7 +308,11 @@ export function computeSlotPose(slot, camera) {
   const vfov = THREE.MathUtils.degToRad(camera.fov)
   const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect)
   const upright = _size.y > 0.8 * Math.max(_size.x, _size.z)
-  const baseElev = upright ? 6 : radius > 0.8 ? 22 : 30
+  // Flat, wide pieces lying on something (a throw across the foot of a bed): look down on
+  // them and fill more of the frame, or the whole bed comes along.
+  const flat = _size.y < 0.35 * Math.max(_size.x, _size.z)
+  const baseElev = upright ? 6 : flat ? 42 : radius > 0.8 ? 22 : 30
+  const fill = flat ? 0.75 : 0.6
 
   // Sight lines from the centre and four points across the product to a candidate camera.
   const probes = [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]
@@ -240,43 +320,50 @@ export function computeSlotPose(slot, camera) {
     let clear = 0
     for (const [a, b] of probes) {
       _probe.set(_center.x + dz * _size.x * a, _center.y + _size.y * b, _center.z - dx * _size.z * a)
-      if (clearLine(root, mesh, _probe, _cand)) clear++
+      if (clearLine(root, _probe, _cand)) clear++
     }
     return clear
   }
 
   const sides = [[_dir.x, _dir.z], [-_dir.x, -_dir.z], [_dir.z, -_dir.x], [-_dir.z, _dir.x]]
-  const elevs = [baseElev, baseElev + 18, 55]
+  // Upright pieces on a wall (a wall scarf) also try eye level, looking slightly up: it gets
+  // under things hanging in front of them (a pendant lamp).
+  const elevs = upright ? [baseElev, -12, baseElev + 18, 55] : [baseElev, baseElev + 18, 55]
   let best = null
   let bestScore = -1
-  for (const elevDeg of elevs) {
-    for (const [dx, dz] of sides) {
-      // Face-on is the point for thin items; skip edge-on views of them.
-      if ((thinZ && Math.abs(dz) < 0.5) || (thinX && Math.abs(dx) < 0.5)) continue
-      const elev = THREE.MathUtils.degToRad(elevDeg)
-      const width = Math.abs(_size.x * dz) + Math.abs(_size.z * dx)
-      const depth = Math.abs(_size.x * dx) + Math.abs(_size.z * dz)
-      const height = _size.y * Math.cos(elev) + depth * Math.sin(elev)
-      // Fill ~60% of the frame, leaving room for the UI panel and some context.
-      const fit = Math.max(width / 2 / Math.tan(hfov / 2), height / 2 / Math.tan(vfov / 2)) / 0.6
-      const dist = Math.max(0.7, fit + depth / 2)
-      _cand.set(dx * Math.cos(elev), Math.sin(elev), dz * Math.cos(elev)).multiplyScalar(dist).add(_center)
-      _cand.x = THREE.MathUtils.clamp(_cand.x, -ROOM.x, ROOM.x)
-      _cand.z = THREE.MathUtils.clamp(_cand.z, -ROOM.z, ROOM.z)
-      _cand.y = THREE.MathUtils.clamp(_cand.y, Math.max(ROOM.yMin, _center.y + 0.15), ROOM.yMax)
-      // First mostly-clear view wins (candidates are in preference order); otherwise the
-      // least-blocked one.
-      const score = visibility(dx, dz)
-      if (score > bestScore) {
-        best = _cand.clone()
-        bestScore = score
-      }
-      if (score >= probes.length - 1) {
-        elevs.length = 0 // break both loops
-        break
+  search: for (const scale of [1, 0.8]) {
+    for (const elevDeg of elevs) {
+      for (const [dx, dz] of sides) {
+        // Face-on is the point for thin items; skip edge-on views of them.
+        if ((thinZ && Math.abs(dz) < 0.5) || (thinX && Math.abs(dx) < 0.5)) continue
+        const elev = THREE.MathUtils.degToRad(elevDeg)
+        const width = Math.abs(_size.x * dz) + Math.abs(_size.z * dx)
+        const depth = Math.abs(_size.x * dx) + Math.abs(_size.z * dz)
+        const height = _size.y * Math.cos(elev) + depth * Math.abs(Math.sin(elev))
+        // Fill ~60% of the frame, leaving room for the UI panel and some context.
+        const fit = Math.max(width / 2 / Math.tan(hfov / 2), height / 2 / Math.tan(vfov / 2)) / fill
+        const dist = Math.max(0.7, fit + depth / 2) * scale
+        _free.set(dx * Math.cos(elev), Math.sin(elev), dz * Math.cos(elev)).multiplyScalar(dist).add(_center)
+        _cand.copy(_free)
+        _cand.x = THREE.MathUtils.clamp(_cand.x, ROOM.minX, ROOM.maxX)
+        _cand.z = THREE.MathUtils.clamp(_cand.z, ROOM.minZ, ROOM.maxZ)
+        const minY = elevDeg < 0 ? ROOM.minY : Math.max(ROOM.minY, _center.y + 0.15)
+        _cand.y = THREE.MathUtils.clamp(_cand.y, minY, ROOM.maxY)
+        // Pulled back through a wall to stay inside the room: a squashed, too-close view.
+        if (_cand.distanceTo(_free) > 0.35 * dist) continue
+        // First mostly-clear view wins (candidates are in preference order); otherwise the
+        // least-blocked one.
+        const score = visibility(dx, dz)
+        if (score > bestScore) {
+          best = _cand.clone()
+          bestScore = score
+        }
+        if (score >= probes.length - 1) break search
       }
     }
   }
+  // Nothing fit without crossing a wall: fall back to the tour stop's own camera.
+  if (!best) best = new THREE.Vector3(...from)
 
   const target = _center.clone()
   // Narrow screens put the UI in a bottom sheet: lift the product into the top half.
@@ -285,15 +372,16 @@ export function computeSlotPose(slot, camera) {
 }
 
 // ── Interactivity ─────────────────────────────────────────────────────────────
-/** Slots the pointer can pick in the current mode. */
-export function useInteractiveSlots() {
+/** Slots the pointer can pick in the current mode, in the given room. */
+export function useInteractiveSlots(scene) {
   const mode = useApp((s) => s.mode)
   const products = useApp((s) => s.products)
   return useMemo(() => {
-    if (mode === 'create') return new Set(SLOTS.filter((s) => s.category).map((s) => s.id))
-    if (mode === 'shop') return new Set(products.filter((p) => p.status !== 'failed').map((p) => p.slot))
+    const here = new Set(slotsInScene(scene).map((s) => s.id))
+    if (mode === 'create') return new Set(slotsInScene(scene).filter((s) => s.category).map((s) => s.id))
+    if (mode === 'shop') return new Set(products.filter((p) => p.status !== 'failed' && here.has(p.slot)).map((p) => p.slot))
     return new Set()
-  }, [mode, products])
+  }, [mode, products, scene])
 }
 
 /** Pointer handlers for the garden <primitive>; undefined when nothing is interactive. */
@@ -358,6 +446,9 @@ export function ProductEffects({ interactive }) {
   // Hover/selection -> highlight targets; selection -> camera.
   useEffect(() => {
     let lastSelected = appStore.get().selectedSlot
+    // A product picked in another room's list (UI switched rooms, then selected): frame it
+    // as soon as this room is in.
+    if (lastSelected && slotMeshes.has(lastSelected)) pendingFocus.current = lastSelected
     applyHighlights()
     return appStore.subscribe(() => {
       applyHighlights()
@@ -406,6 +497,8 @@ export function ProductEffects({ interactive }) {
       if (slot) {
         const pose = computeSlotPose(slot, camera)
         if (pose) tourStore.focus(pose)
+        // Meshes not in yet (room still streaming): try again next frame.
+        else if (!slotMeshes.has(slot) && appStore.get().selectedSlot === slot && SLOT_BY_ID[slot]?.scene === tourStore.scene) pendingFocus.current = slot
       } else {
         tourStore.returnToStop()
       }
@@ -420,14 +513,19 @@ export function ProductEffects({ interactive }) {
     () => () => {
       // Unmount (HMR / route change): release every texture we hold.
       for (const st of states.values()) {
+        st.dead = true
         if (st.aUrl) releasePattern(st.aUrl)
         if (st.bUrl) releasePattern(st.bUrl)
       }
       states.clear()
       animating.clear()
+      resetOutlines()
     },
     [],
   )
 
-  return outlines.map((o, i) => <primitive key={i} object={o.mesh} />)
+  return outlines.map((o, i) => <primitive key={i} object={o.group} />)
 }
+
+// Dev builds: inspect registrations / animation state from the console or headless scripts.
+if (import.meta.env.DEV) window.__products = { slotMeshes, states, animating, computeSlotPose }

@@ -1,12 +1,16 @@
-// Camera waypoints for the scroll tour, in scene metres (Y-up, conservatory centred at the
-// origin, entrance facing +Z). Each stop frames a group of products a designer can dress.
+// Camera waypoints for the scroll tour, per room, in scene metres (Y-up). Each stop frames a
+// group of products a designer can dress; SLOTS[].stop points at one of its room's stops.
+//
+// Conservatory: centred at the origin, entrance facing +Z.
+// Bedroom: walls at x = ±1.9, bed against the back wall (z = -2.2), windows in the left
+// wall, the front (z = +2.8) open like a stage set.
 //
 // Tuning: run with `?dev`, press O to toggle orbit controls, frame the shot, press P to log
 // a ready-to-paste `pos` / `target` pair to the console.
 //
 // hideFromNav stops are still reached by scrolling; they just don't get a nav dot.
 // mobile overrides apply at <= 768px wide, where the portrait frustum is much narrower.
-export const STOPS = [
+const GARDEN_STOPS = [
   {
     id: 'arrival',
     navLabel: 'Arrival',
@@ -79,4 +83,68 @@ export const STOPS = [
   },
 ]
 
-export const NAV_STOPS = STOPS.map((s, i) => ({ ...s, index: i })).filter((s) => !s.hideFromNav)
+const BEDROOM_STOPS = [
+  {
+    id: 'bedroom-arrival',
+    navLabel: 'Bedroom',
+    hideFromNav: true,
+    pos: [0.5, 1.75, 6.2],
+    target: [0, 1.15, -0.4],
+    mobile: { pos: [0.6, 2.0, 8.6] },
+  },
+  {
+    id: 'bed',
+    navLabel: 'The Bed',
+    title: 'The Bedroom',
+    subtitle: 'Duvets, throws & shams',
+    pos: [1.25, 1.7, 1.75],
+    target: [-0.15, 0.5, -0.95],
+    mobile: { pos: [1.35, 2.0, 2.9] },
+  },
+  {
+    id: 'headboard',
+    navLabel: 'Headboard',
+    title: 'Pillows & Wall Scarf',
+    subtitle: 'Shams, bolsters & a silk carré',
+    pos: [0.3, 1.5, 0.85],
+    target: [0, 1.42, -2.1],
+    mobile: { pos: [0.3, 1.55, 2.0] },
+  },
+  {
+    id: 'armchairs',
+    navLabel: 'Reading Corner',
+    title: 'The Reading Corner',
+    subtitle: 'Armchair pillows',
+    // The armchairs face the open front, so this one looks in from outside the room.
+    pos: [0.25, 1.45, 3.25],
+    target: [0, 0.62, 1.15],
+    mobile: { pos: [0.3, 1.6, 4.4] },
+  },
+  {
+    id: 'window',
+    navLabel: 'Window',
+    title: 'The Window',
+    subtitle: 'Sheer linen drapes',
+    pos: [1.55, 1.45, 1.6],
+    target: [-1.9, 1.35, 0.6],
+    // Portrait is too narrow to see past the armchairs: stand by the foot of the bed and look
+    // at the rear window and its drape instead.
+    mobile: { pos: [1.65, 1.6, 0.75], target: [-1.9, 1.25, -0.55] },
+  },
+]
+
+export const STOPS_BY_SCENE = { garden: GARDEN_STOPS, bedroom: BEDROOM_STOPS }
+
+/** The tour stops of a room (the conservatory's for unknown ids). */
+export const stopsFor = (scene) => STOPS_BY_SCENE[scene] ?? GARDEN_STOPS
+
+/** Stops that get a nav dot, with their index into stopsFor(scene). */
+const navCache = new Map()
+export function navStopsFor(scene) {
+  let nav = navCache.get(scene)
+  if (!nav) {
+    nav = stopsFor(scene).map((s, i) => ({ ...s, index: i })).filter((s) => !s.hideFromNav)
+    navCache.set(scene, nav)
+  }
+  return nav
+}

@@ -32,7 +32,7 @@ const shortError = (e) => String(e?.message ?? e).slice(0, 500)
 export async function completePattern(env, row, arcadePatternId) {
   const p = await arcade(env, 'patterns/get', { patternId: arcadePatternId })
   const [imageKey, thumbKey] = await Promise.all([
-    copyToR2(env, p.imageUrl, `patterns/${row.id}`),
+    copyToR2(env, p.imageUrl, `patterns/${row.id}`, { webp: 88 }),
     copyToR2(env, p.thumbnailUrl, `patterns/${row.id}_thumb`),
   ])
   if (!imageKey) throw new Error('Could not download the pattern image')
@@ -78,7 +78,7 @@ export async function refreshPatterns(env, creatorId) {
 async function completeProduct(env, row, arcadeProductId) {
   const p = await arcade(env, 'products/get', { productId: arcadeProductId, quantity: 1 })
   const imageUrl = p.images?.[0]?.url ?? p.imageUrl
-  const imageKey = imageUrl ? await copyToR2(env, imageUrl, `products/${row.id}`) : null
+  const imageKey = imageUrl ? await copyToR2(env, imageUrl, `products/${row.id}`, { webp: 85 }) : null
   await env.DB.prepare(
     `UPDATE shop_products SET status = 'succeeded', arcade_product_id = ?, title = ?, selection_label = ?, unit_price_json = ?,
        image_key = COALESCE(?, image_key), error = NULL WHERE id = ?`,

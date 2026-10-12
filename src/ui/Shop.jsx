@@ -3,6 +3,8 @@ import { ZoomableImage, productImages } from './Lightbox'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
 import { SLOT_BY_ID } from '../slots'
+import { SCENES, SCENE_BY_ID } from '../scenes'
+import { navigateRoom } from './router'
 import { clearSelection, selectSlot } from './focus'
 import { formatPrice } from './format'
 import { Link } from './router'
@@ -180,6 +182,7 @@ export function ShopView({ slug }) {
   const products = useApp((s) => s.products)
   const cart = useApp((s) => s.cart)
   const selectedSlot = useApp((s) => s.selectedSlot)
+  const scene = useApp((s) => s.scene)
   const [state, setState] = useState('loading')
   const [bagOpen, setBagOpen] = useState(false)
   const [toast, setToast] = useState(null)
@@ -229,7 +232,10 @@ export function ShopView({ slug }) {
     )
 
   const selected = products.find((p) => p.slot === selectedSlot)
+  // The bag spans every room; the index lists what's in the room on screen.
   const count = cart.reduce((n, l) => n + (products.some((p) => p.id === l.productId) ? l.quantity : 0), 0)
+  const inRoom = products.filter((p) => SLOT_BY_ID[p.slot]?.scene === scene)
+  const otherRoom = SCENES.find((s) => s.id !== scene && products.some((p) => SLOT_BY_ID[p.slot]?.scene === s.id))
 
   return (
     <>
@@ -240,13 +246,25 @@ export function ShopView({ slug }) {
           </Link>
           <h1>{shop.name}</h1>
           {shop.tagline && <p>{shop.tagline}</p>}
-          {state === 'ready' && products.length === 0 && <p className="shop-head__note">Nothing in this room is for sale yet.</p>}
+          {state === 'ready' && inRoom.length === 0 && (
+            <p className="shop-head__note">
+              Nothing in the {SCENE_BY_ID[scene]?.label.toLowerCase()} is for sale yet.
+              {otherRoom && (
+                <>
+                  {' '}
+                  <button type="button" className="link-btn" onClick={() => navigateRoom(otherRoom.id)}>
+                    Visit the {otherRoom.label.toLowerCase()}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </header>
       )}
 
-      {state === 'ready' && products.length > 0 && !selected && (
-        <nav className="shop-index" aria-label="Products in this shop">
-          {products.map((p) => (
+      {state === 'ready' && inRoom.length > 0 && !selected && (
+        <nav className="shop-index" aria-label={`Products in the ${SCENE_BY_ID[scene]?.label.toLowerCase()}`}>
+          {inRoom.map((p) => (
             <button key={p.id} type="button" className="shop-index__item" onClick={() => selectSlot(p.slot)}>
               <img src={p.pattern?.thumbUrl || p.imageUrl} alt="" />
               <span>{SLOT_BY_ID[p.slot]?.label ?? p.title}</span>

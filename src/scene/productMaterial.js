@@ -1,7 +1,7 @@
 // Material for the dressable products (pillows, curtains, duvet...): printed textiles.
 //
 // Pattern mapping, picked per geometry when the material is made:
-//   - UV path (geometry has `uv`): scripts/optimize-garden.mjs unwraps each product into
+//   - UV path (geometry has `uv`): scripts/optimize-scene.mjs unwraps each product into
 //     panels with uv in METRES of surface distance (+v = print up), so the print follows the
 //     cloth like a real sewn product. Pattern coord = uv / SLOTS[].repeat.
 //   - Triplanar path (no `uv`): world-space projection blended by the normal. The fallback.
@@ -60,6 +60,17 @@ const SLOT_FABRIC = {
   shams: { fabric: 'cotton' },
   quilt: { fabric: 'cotton', quilt: 0.085 },
   'quilted-shams': { fabric: 'cotton', quilt: 0.06 },
+  // Bedroom
+  'bed-duvet': { fabric: 'cotton' },
+  'bed-throw': { fabric: 'cotton', quilt: 0.085 },
+  'bed-pillows': { fabric: 'cotton' },
+  'bed-bolster': { fabric: 'cotton' },
+  'bed-accent-pillow': { fabric: 'linen' },
+  'bed-wall-scarf': { fabric: 'silk' },
+  'bed-armchair-pillows': { fabric: 'linen' },
+  // Sheer drapes hang close to the wall under the ceiling: their baked AO is deep (~0.5) and
+  // reads as grime on pale linen, so it only gets part of it.
+  'bed-drapes': { fabric: 'linen', translucency: 0.75, ao: 0.45 },
 }
 
 /**
@@ -186,6 +197,7 @@ export function makeProductMaterial(base, slot, { hasUv = false, hasAo = false }
     uSheenRough: { value: f.sheenRoughness },
     uTranslucency: { value: spec.translucency ?? 0 },
     uGlow: { value: spec.glow ?? 0 },
+    uAoStrength: { value: spec.ao ?? 1 },
   }
   m.userData.u = u
   m.defines = { ...(m.defines ?? {}) }
@@ -229,7 +241,7 @@ export function makeProductMaterial(base, slot, { hasUv = false, hasAo = false }
         uniform sampler2D uTexA, uTexB;
         uniform float uAmountA, uAmountB, uTileScale, uHighlight;
         uniform vec3 uHighlightColor;
-        uniform float uThreads, uWeave, uSlub, uQuilt, uSheen, uSheenRough, uTranslucency, uGlow;
+        uniform float uThreads, uWeave, uSlub, uQuilt, uSheen, uSheenRough, uTranslucency, uGlow, uAoStrength;
         uniform vec3 uSunDir, uSunColor;
 
         float fabHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -354,7 +366,7 @@ export function makeProductMaterial(base, slot, { hasUv = false, hasAo = false }
         material.sheenColor = uSheen * mix(vec3(1.0), diffuseColor.rgb, 0.7);
         material.sheenRoughness = clamp(uSheenRough, 0.07, 1.0);`,
       )
-      .replace('#include <aomap_fragment>', `#include <aomap_fragment>\n${aoFragment('fabSeamAo')}`)
+      .replace('#include <aomap_fragment>', `#include <aomap_fragment>\n${aoFragment('fabSeamAo', '(0.6 * uAoStrength)', '(0.18 * uAoStrength)')}`)
       .replace(
         '#include <emissivemap_fragment>',
         /* glsl */ `#include <emissivemap_fragment>

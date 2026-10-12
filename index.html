@@ -5,7 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Lookie Studio</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 28V14L16 4l12 10v14z' fill='none' stroke='%23c4683f' stroke-width='2.5'/%3E%3C/svg%3E" />
-    <link rel="preload" href="/models/glass-garden.glb" as="fetch" type="model/gltf-binary" crossorigin />
+    <script>
+      // Start fetching the room in the URL right away (bedroom: /studio/bedroom, /s/<slug>/bedroom).
+      ;(() => {
+        const room = /^\/(studio|s\/[^/]+)\/bedroom\/?$/.test(location.pathname) ? 'bedroom' : 'glass-garden'
+        const l = document.createElement('link')
+        l.rel = 'preload'
+        l.as = 'fetch'
+        l.type = 'model/gltf-binary'
+        l.crossOrigin = 'anonymous'
+        l.href = `/models/${room}.glb`
+        document.head.appendChild(l)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

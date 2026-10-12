@@ -18,6 +18,8 @@
     }
   ],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "lookie-studio" }],
+  // Re-encodes Arcade's PNG patterns/mockups to WebP before they go into R2 (worker/http.js).
+  "images": { "binding": "IMAGES" },
   "vars": {
     "ARCADE_API_BASE": "https://platform.arcade.ai/v1",
     "ARCADE_USER_AGENT": "lookie-studio/0.1"

@@ -1,4 +1,5 @@
-// Product UVs for the glass garden: xatlas unwrap -> per-chart clean-up -> TEXCOORD_0 in METRES.
+// Product UVs: xatlas unwrap (or a product's own ixi layout) -> per-chart clean-up -> TEXCOORD_0
+// in METRES.
 //
 // Convention (the runtime shader relies on it — see src/scene/productMaterial.js):
 //   uv is surface distance in metres, so `uv / SLOT.repeat` gives a uniform print scale.
@@ -165,13 +166,27 @@ export async function unwrapProduct(mesh, world, { mode, horizontalAxis, chartOp
   const byUv = componentsByVertex(uvIndex, out.vertexCount);
   const chart = Int32Array.from({ length: nv }, (_, i) => byUv.chart[uvOf[i]]);
   const count = byUv.count;
+  const stats = finishCharts({ index, uv, W, WN, chart, count, H: horizontalAxis });
+  stats.charts = count;
+  return { positions, normals, colors, index, uv: Float32Array.from(uv), stats };
+}
+
+/**
+ * Per-chart clean-up shared by unwrapProduct and orientSourceUV (mutates `uv` in place):
+ *   1. un-mirror (u x v along the outward normal), 2. scale to metres (area-preserving),
+ *   3. rotate +v uphill (or along H on near-flat charts), 4. place at world-coherent coords.
+ * @param {object} p  { index, uv: Float64Array, W: world positions (mm), WN: world normals,
+ *                      chart: chart id per vertex, count, H: horizontal axis (world, unit) }
+ * @returns stats { charts, flipped, horizontal, stretch: { p50, p95, max } }
+ */
+function finishCharts({ index, uv, W, WN, chart, count, H }) {
+  const nv = chart.length;
   const chartTris = Array.from({ length: count }, () => []);
   for (let t = 0; t < index.length; t += 3) chartTris[chart[index[t]]].push(t);
   const chartVerts = Array.from({ length: count }, () => []);
   for (let i = 0; i < nv; i++) chartVerts[chart[i]].push(i);
 
   const UP = [0, 0, 1]; // raw document is Z-up
-  const H = horizontalAxis;
   const stats = { charts: count, flipped: 0, horizontal: 0, stretch: [] };
 
   for (let c = 0; c < count; c++) {
@@ -282,7 +297,76 @@ export async function unwrapProduct(mesh, world, { mode, horizontalAxis, chartOp
   };
   stats.stretch = { p50: +pct(0.5).toFixed(3), p95: +pct(0.95).toFixed(3), max: +(stats.stretch.at(-1)?.[0] ?? 1).toFixed(2) };
 
-  return { positions, normals, colors, index, uv: Float32Array.from(uv), stats };
+  return stats;
+}
+
+/**
+ * Reuse a product's own 0..1 uv layout (ixi exports each product's design normalised per axis)
+ * instead of unwrapping: fit each chart's u and v scale back to surface distance, then run the
+ * same chart clean-up as an unwrap. Vertices and triangles are left as they are.
+ * Check `stats.stretch` — a layout that wasn't made for cloth can be badly distorted.
+ * @param {object} mesh  { positions, normals, colors?, colorSize?, index, uv: Float32Array (0..1) }
+ */
+export function orientSourceUV(mesh, world, { horizontalAxis }) {
+  const nv = mesh.positions.length / 3;
+  const index = Uint32Array.from(mesh.index);
+  const uv = Float64Array.from(mesh.uv);
+  const W = new Float64Array(nv * 3);
+  const WN = new Float64Array(nv * 3);
+  const P = mesh.positions, N = mesh.normals;
+  for (let i = 0; i < nv; i++) {
+    const x = P[3 * i], y = P[3 * i + 1], z = P[3 * i + 2];
+    W[3 * i] = world[0] * x + world[4] * y + world[8] * z + world[12];
+    W[3 * i + 1] = world[1] * x + world[5] * y + world[9] * z + world[13];
+    W[3 * i + 2] = world[2] * x + world[6] * y + world[10] * z + world[14];
+    const a = N[3 * i], b = N[3 * i + 1], c = N[3 * i + 2];
+    WN[3 * i] = world[0] * a + world[4] * b + world[8] * c;
+    WN[3 * i + 1] = world[1] * a + world[5] * b + world[9] * c;
+    WN[3 * i + 2] = world[2] * a + world[6] * b + world[10] * c;
+  }
+
+  // Charts: vertices that share position AND uv are one (normal splits); uv seams split charts.
+  const weld = new Int32Array(nv);
+  {
+    const seen = new Map();
+    for (let i = 0; i < nv; i++) {
+      const k = `${Math.round(P[3 * i] * 100)},${Math.round(P[3 * i + 1] * 100)},${Math.round(P[3 * i + 2] * 100)},${Math.round(uv[2 * i] * 1e5)},${Math.round(uv[2 * i + 1] * 1e5)}`;
+      if (!seen.has(k)) seen.set(k, seen.size);
+      weld[i] = seen.get(k);
+    }
+  }
+  const byWeld = componentsByVertex(Uint32Array.from(index, (i) => weld[i]), nv);
+  const chart = Int32Array.from({ length: nv }, (_, i) => byWeld.chart[weld[i]]);
+  const count = byWeld.count;
+
+  // Normalised layouts squash u and v by different amounts: per chart, rescale each axis to its
+  // area-weighted mean surface length (mm per uv unit) so the chart is isotropic again.
+  const su = new Float64Array(count), sv = new Float64Array(count), sa = new Float64Array(count);
+  for (let t = 0; t < index.length; t += 3) {
+    const f = triFrame(W, uv, index[t], index[t + 1], index[t + 2]);
+    if (!f) continue;
+    const c = chart[index[t]];
+    su[c] += len(f.T) * f.area3;
+    sv[c] += len(f.B) * f.area3;
+    sa[c] += f.area3;
+  }
+  for (let i = 0; i < nv; i++) {
+    const c = chart[i];
+    if (!sa[c]) continue;
+    uv[2 * i] *= su[c] / sa[c];
+    uv[2 * i + 1] *= sv[c] / sa[c];
+  }
+
+  const stats = finishCharts({ index, uv, W, WN, chart, count, H: horizontalAxis });
+  stats.charts = count;
+  return {
+    positions: mesh.positions,
+    normals: mesh.normals,
+    colors: mesh.colors ?? null,
+    index,
+    uv: Float32Array.from(uv),
+    stats,
+  };
 }
 
 /** Longest horizontal axis (world, Z-up) of a set of world positions (PCA in XY). */

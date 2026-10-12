@@ -8,7 +8,7 @@
 // not every frame. The wind sway in grass/leaves is too small to need moving shadows.
 import { useEffect, useMemo, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Environment, Lightformer, Sky } from '@react-three/drei'
+import { RoomEnvironment, RoomSky } from './roomSky'
 import * as THREE from 'three'
 import { useQuality } from '../perf/quality'
 import { fabricSun } from './productMaterial'
@@ -49,6 +49,17 @@ export function Lighting() {
   const sun = useRef()
   const refreshShadows = useShadowRefresh()
   const sunPosition = useMemo(() => SUN_DIR.clone().multiplyScalar(100), [])
+  const formers = useMemo(
+    () => [
+      // Ground bounce: a big, grass-tinted disc below the horizon.
+      { form: 'circle', color: '#7f9a5c', intensity: 1.5, scale: 60, position: [0, -12, 0], rotationX: -Math.PI / 2 },
+      // Warm sun-side panel: keeps the fill light afternoon-warm against the blue sky dome
+      // (and gives the glass a soft highlight to catch).
+      { form: 'rect', color: '#fff2dc', intensity: 10, scale: [12, 4], position: sunPosition.clone().setLength(20).toArray(), target: [0, 0, 0] },
+      { form: 'rect', color: '#e8f0ff', intensity: 0.8, scale: [20, 6], position: [0, 8, -18], target: [0, 0, 0] },
+    ],
+    [sunPosition],
+  )
 
   // Fabric translucency (curtains) needs the sun's direction and colour.
   useEffect(() => {
@@ -59,6 +70,13 @@ export function Lighting() {
   useEffect(() => {
     gl.shadowMap.autoUpdate = false
     refreshShadows()
+    const light = sun.current
+    // The room is leaving: free the sun's shadow map with it.
+    return () => {
+      if (!light) return
+      light.shadow.dispose()
+      light.shadow.map = null
+    }
   }, [gl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resize the shadow map when the quality tier changes.
@@ -73,17 +91,10 @@ export function Lighting() {
 
   return (
     <>
-      <Sky distance={4500} sunPosition={sunPosition} {...SKY} />
+      <RoomSky sunPosition={sunPosition} sky={SKY} />
       <fog attach="fog" args={[FOG_COLOR, 35, 170]} />
-
-      <Environment frames={1} resolution={128} environmentIntensity={0.6}>
-        <Sky distance={4500} sunPosition={sunPosition} {...SKY} />
-        {/* Ground bounce: a big, dim, grass-tinted disc below the horizon. */}
-        <Lightformer form="circle" color="#7f9a5c" intensity={0.6} scale={60} position={[0, -12, 0]} rotation-x={-Math.PI / 2} />
-        {/* Soft warm window highlights for the glass to catch. */}
-        <Lightformer form="rect" color="#fff2dc" intensity={2.2} scale={[12, 4]} position={sunPosition.clone().setLength(20)} target={[0, 0, 0]} />
-        <Lightformer form="rect" color="#e8f0ff" intensity={0.8} scale={[20, 6]} position={[0, 8, -18]} target={[0, 0, 0]} />
-      </Environment>
+      {/* Tuned against the earlier drei <Environment> look (A/B pixel-matched). */}
+      <RoomEnvironment sunPosition={sunPosition} sky={SKY} formers={formers} intensity={0.32} />
 
       {/* Fill for the Lambert foliage (it ignores the environment map). */}
       <hemisphereLight args={['#cfe2f3', '#5d6b3a', 0.38]} />

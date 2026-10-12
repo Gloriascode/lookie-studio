@@ -2,16 +2,26 @@ import { useEffect, useState } from 'react'
 import { ZoomableImage, productImages } from './Lightbox'
 import { api } from '../api'
 import { appStore, useApp } from '../state/appStore'
-import { SLOTS, SLOT_BY_ID } from '../slots'
-import { STOPS } from '../tour/stops'
+import { SLOT_BY_ID, slotsInScene } from '../slots'
+import { SCENE_BY_ID } from '../scenes'
+import { stopsFor } from '../tour/stops'
 import { AuthCard } from './Auth'
 import { clearSelection, selectSlot } from './focus'
 import { SLUG_RE, formatPrice, shopUrl } from './format'
 import { PatternTile, PatternsTab, PromptComposer, mergePatterns } from './Patterns'
 import { usePoll } from './usePoll'
 
-// Slots grouped by the room (tour stop) they live in, in tour order.
-const ROOMS = STOPS.map((stop) => ({ stop, slots: SLOTS.filter((s) => s.stop === stop.id) })).filter((r) => r.slots.length)
+// A room's slots grouped by the tour stop that frames them, in tour order.
+const groupsCache = new Map()
+function slotGroups(scene) {
+  let groups = groupsCache.get(scene)
+  if (!groups) {
+    const slots = slotsInScene(scene)
+    groups = stopsFor(scene).map((stop) => ({ stop, slots: slots.filter((s) => s.stop === stop.id) })).filter((g) => g.slots.length)
+    groupsCache.set(scene, groups)
+  }
+  return groups
+}
 
 function upsertProduct(product) {
   const rest = appStore.get().products.filter((p) => p.slot !== product.slot)
@@ -28,14 +38,16 @@ function StatusPill({ slot, product }) {
 
 function ProductsTab() {
   const products = useApp((s) => s.products)
+  const scene = useApp((s) => s.scene)
   const bySlot = Object.fromEntries(products.map((p) => [p.slot, p]))
-  const live = products.filter((p) => p.status === 'succeeded').length
+  const sellable = slotsInScene(scene).filter((s) => s.category)
+  const live = sellable.filter((s) => bySlot[s.id]?.status === 'succeeded').length
   return (
     <div className="tab-body">
       <p className="muted">
-        {live} of {SLOTS.filter((s) => s.category).length} products live. Click a piece in the room, or pick one below.
+        {SCENE_BY_ID[scene]?.label}: {live} of {sellable.length} products live. Click a piece in the room, or pick one below.
       </p>
-      {ROOMS.map(({ stop, slots }) => (
+      {slotGroups(scene).map(({ stop, slots }) => (
         <section key={stop.id} className="room">
           <h3>{stop.title ?? stop.navLabel}</h3>
           <ul className="slot-list">

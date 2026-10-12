@@ -1,5 +1,5 @@
 // The conservatory from ixi (canvas "Lookie", model3d "glass garden"), optimised by
-// scripts/optimize-garden.mjs. The export carries flat CAD colours; here every mesh gets a
+// scripts/optimize-scene.mjs. The export carries flat CAD colours; here every mesh gets a
 // material by role so the room reads as painted iron, glazed tile, glass and linen.
 import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
@@ -8,9 +8,11 @@ import * as THREE from 'three'
 import { SLOT_BY_ID } from '../slots'
 import { makeProductMaterial, withVertexAo } from './productMaterial'
 import { setPatternAnisotropy } from './patternTextures'
-import { ProductEffects, slotMeshes, useInteractiveSlots, useProductPointer } from './Products'
+import { ProductEffects, registerSlotMesh, unregisterSlotMeshes, useInteractiveSlots, useProductPointer } from './Products'
+import { keepGLTF } from './dispose'
+import { SCENE_BY_ID } from '../scenes'
 
-export const GARDEN_URL = '/models/glass-garden.glb'
+export const GARDEN_URL = SCENE_BY_ID.garden.model
 
 function makeMaterials() {
   return {
@@ -77,7 +79,7 @@ export function GlassGarden(props) {
   const { scene } = useGLTF(GARDEN_URL)
   const materials = useMemo(makeMaterials, [])
   const gl = useThree((s) => s.gl)
-  const interactive = useInteractiveSlots()
+  const interactive = useInteractiveSlots('garden')
 
   // Prints are viewed at grazing angles a lot (tablecloth, duvet): use all the anisotropy
   // the GPU offers. Runs after ProductEffects' own default (child effects run first).
@@ -85,6 +87,7 @@ export function GlassGarden(props) {
   const pointer = useProductPointer(interactive)
 
   useLayoutEffect(() => {
+    const registered = []
     scene.traverse((o) => {
       if (!o.isMesh) return
       const product = o.userData.product
@@ -116,14 +119,21 @@ export function GlassGarden(props) {
       o.receiveShadow = !isGlass
       if (isGlass) o.renderOrder = 2
       if (NO_RAYCAST.has(role)) o.raycast = noRaycast
-      if (role === 'product' && o.userData.slot) slotMeshes.set(o.userData.slot, o)
+      if (role === 'product' && o.userData.slot) {
+        registerSlotMesh(o.userData.slot, o)
+        registered.push(o)
+      }
       // Static scene: compute matrices once, then stop three from recomputing them every frame.
       o.updateMatrixWorld(true)
       o.matrixAutoUpdate = false
     })
     scene.updateMatrixWorld(true)
     scene.matrixAutoUpdate = false
+    return () => unregisterSlotMeshes(registered)
   }, [scene, materials])
+
+  // Leaving the conservatory (room switch): free its GPU memory.
+  useEffect(() => keepGLTF(GARDEN_URL, scene), [scene])
 
   return (
     <>
@@ -133,4 +143,3 @@ export function GlassGarden(props) {
   )
 }
 
-useGLTF.preload(GARDEN_URL)

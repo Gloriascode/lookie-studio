@@ -64,7 +64,7 @@ export function Landing() {
             <h1 id="landing-title" className="card__title card__title--xl">
               A sunlit studio, dressed in your prints.
             </h1>
-            <p className="card__lede">Wander through creators’ rooms and shop what you love, or open your own studio and make the room yours.</p>
+            <p className="card__lede">Wander a sunlit conservatory and a quiet bedroom dressed in creators’ prints and shop what you love, or open your own studio and make both rooms yours.</p>
             <div className="choices">
               <button type="button" className="choice" onClick={() => setBrowsing(true)}>
                 <span className="choice__kicker">Shop</span>

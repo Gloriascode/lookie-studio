@@ -2,7 +2,7 @@
 // Same external-store pattern as tourStore: plain object + listeners + useSyncExternalStore.
 //
 // Ownership:
-//   UI   writes: mode, creator, shop, patterns, designs, products, preview, cart
+//   UI   writes: mode, scene, creator, shop, patterns, designs, products, preview, cart
 //   3D   writes: hoveredSlot (pointer over a product), selectedSlot (click)
 //   both read everything. Keep values immutable (replace, don't mutate) so selectors update.
 import { useSyncExternalStore } from 'react'
@@ -10,6 +10,8 @@ import { useSyncExternalStore } from 'react'
 const state = {
   /** 'landing' | 'shop' | 'create' */
   mode: 'landing',
+  /** the room on screen (SCENES[].id); products of every room stay in `products` */
+  scene: 'garden',
   /** Creator | null (create mode, from /api/me) */
   creator: null,
   /** Shop | null: the shop being viewed (shop mode) or edited (create mode) */

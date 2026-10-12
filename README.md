@@ -40,14 +40,16 @@ Local dev needs `.dev.vars` with `ARCADE_API_KEY=…` and the local database:
 
 | Asset | Source |
 |---|---|
-| Conservatory + furniture + blank products | ixi canvas "Lookie" (`ent_03b47b9ec22f4c6c`), model3d **glass garden** (`model3d-4249taw`), GLB export → `raw/glass-garden.glb` |
+| Conservatory room | ixi canvas "Lookie" (`ent_03b47b9ec22f4c6c`), model3d **glass garden** (`model3d-4249taw`), GLB export → `raw/glass-garden.glb` |
+| Bedroom room | same canvas, model3d **bedroom scene** (`model3d-1718adt`), GLB export → `raw/bedroom.glb` |
 | Trees | [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT), generated in the browser |
 | Flowers, grass card, ground textures | ez-tree demo assets (MIT), flowers simplified ~55% |
 
-`scripts/optimize-garden.mjs` turns the 10 MB Draco export into a 2.4 MB meshopt GLB:
-Z-up mm → Y-up m, drops the flat lawn, tags product meshes with `extras.product` = Arcade
-category (they arrive in three.js as `userData.product`), switches cutouts to alpha-mask,
-WebP textures.
+`npm run assets` (`scripts/optimize-scene.mjs`, per-room settings in `scripts/scenes.config.mjs`)
+turns each room's ixi export into a meshopt GLB (garden 10 MB → 2.9 MB, bedroom 13.7 MB → 1.9 MB):
+Z-up mm → Y-up m, product meshes tagged with `extras.slot` (see `src/slots.js`, one shop spans
+every room), product UVs in metres (+v = print up), baked per-vertex AO (`_ao`), WebP textures.
+`node scripts/optimize-scene.mjs bedroom` rebuilds one room.
 
 ## Layout
 

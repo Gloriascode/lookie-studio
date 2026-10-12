@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
-import { NAV_STOPS, STOPS } from './stops'
-import { tourStore, useActiveStop, useTourFocused, useTourMoving } from './tourStore'
+import { navStopsFor, stopsFor } from './stops'
+import { tourStore, useActiveStop, useTourFocused, useTourMoving, useTourScene } from './tourStore'
 
 // Hidden stops light up the nearest visible dot.
-function nearestVisible(index) {
-  let best = NAV_STOPS[0]
-  for (const s of NAV_STOPS) if (Math.abs(s.index - index) < Math.abs(best.index - index)) best = s
+function nearestVisible(nav, index) {
+  let best = nav[0]
+  for (const s of nav) if (Math.abs(s.index - index) < Math.abs(best.index - index)) best = s
   return best
 }
 
 export function TourNav() {
   const active = useActiveStop()
+  const scene = useTourScene()
   const [hovered, setHovered] = useState(null)
-  const current = nearestVisible(active)
-  const label = hovered != null ? STOPS[hovered].navLabel : current.navLabel
+  const nav = navStopsFor(scene)
+  const stops = stopsFor(scene)
+  const current = nearestVisible(nav, active)
+  const label = hovered != null && stops[hovered] ? stops[hovered].navLabel : current.navLabel
 
   return (
     <nav className="tour-nav" aria-label="Scene stops">
@@ -21,7 +24,7 @@ export function TourNav() {
         {label}
       </span>
       <div className="tour-nav__dots">
-        {NAV_STOPS.map((s) => (
+        {nav.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -45,10 +48,11 @@ export function StopCaption() {
   const active = useActiveStop()
   const moving = useTourMoving()
   const focused = useTourFocused()
-  const stop = STOPS[active]
-  if (!stop.title) return null
+  const scene = useTourScene()
+  const stop = stopsFor(scene)[active]
+  if (!stop?.title) return null
   return (
-    <header className={`stop-caption${moving || focused ? ' stop-caption--hidden' : ''}`} key={stop.id}>
+    <header className={`stop-caption${moving || focused ? ' stop-caption--hidden' : ''}`} key={`${scene}:${stop.id}`}>
       <h1>{stop.title}</h1>
       {stop.subtitle && <p>{stop.subtitle}</p>}
     </header>

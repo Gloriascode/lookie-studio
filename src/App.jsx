@@ -2,12 +2,6 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useProgress } from '@react-three/drei'
 import * as THREE from 'three'
-import { GlassGarden } from './scene/GlassGarden'
-import { Lighting } from './scene/Lighting'
-import { Ground } from './scene/Ground'
-import { Grass } from './scene/Grass'
-import { Flowers } from './scene/Flowers'
-import { Trees } from './scene/Trees'
 import { WindClock } from './scene/wind'
 import { ScrollCameraDirector } from './tour/ScrollCameraDirector'
 import { StopCaption, SwipeHint, TourNav } from './tour/TourNav'
@@ -20,8 +14,25 @@ import { Studio } from './ui/Studio'
 import { ShopView } from './ui/Shop'
 import { HoverTip } from './ui/HoverTip'
 import { clearSelection } from './ui/focus'
+import { RoomTabs } from './ui/RoomTabs'
 
 const dev = new URLSearchParams(location.search).has('dev')
+
+// Each room is its own chunk; only the room on screen (and its GLB) is fetched.
+const WORLDS = {
+  garden: lazy(() => import('./scene/GardenWorld')),
+  bedroom: lazy(() => import('./scene/BedroomWorld')),
+}
+
+function World() {
+  const scene = useApp((s) => s.scene)
+  const Room = WORLDS[scene] ?? WORLDS.garden
+  return (
+    <Suspense fallback={null}>
+      <Room key={scene} />
+    </Suspense>
+  )
+}
 // Postprocessing (~100 kB gz) is only fetched once a device reaches the high tier.
 const Effects = lazy(() => import('./scene/Effects').then((m) => ({ default: m.Effects })))
 
@@ -94,17 +105,7 @@ export default function App() {
           toneMappingExposure: 1.0,
         }}
       >
-        <Suspense fallback={null}>
-          <Lighting />
-          <GlassGarden />
-          <Ground />
-        </Suspense>
-        {/* Foliage streams in after the building; it suspends on its own boundary. */}
-        <Suspense fallback={null}>
-          <Grass />
-          <Flowers />
-        </Suspense>
-        <Trees />
+        <World />
         <WindClock />
         <ScrollCameraDirector blocked={orbit} />
         <AdaptiveQuality />
@@ -123,6 +124,7 @@ export default function App() {
       <TourNav />
       <SwipeHint />
       <Overlay route={route} />
+      {(route.name === 'shop' || (route.name === 'studio' && creator)) && <RoomTabs />}
       <HoverTip />
       <LoadingVeil />
     </div>

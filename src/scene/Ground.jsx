@@ -7,10 +7,10 @@ import * as THREE from 'three'
 import { PATH, BEDS } from './layout'
 
 export function Ground() {
-  const [grass, dirt, dirtNormal] = useTexture(['/nature/grass.jpg', '/nature/dirt_color.jpg', '/nature/dirt_normal.jpg'])
+  const [grass, dirt] = useTexture(['/nature/grass.webp', '/nature/dirt_color.webp'])
 
   const material = useMemo(() => {
-    for (const t of [grass, dirt, dirtNormal]) {
+    for (const t of [grass, dirt]) {
       t.wrapS = t.wrapT = THREE.RepeatWrapping
       t.anisotropy = 8
     }
@@ -80,7 +80,7 @@ export function Ground() {
         )
     }
     return m
-  }, [grass, dirt, dirtNormal])
+  }, [grass, dirt])
 
   return (
     <mesh rotation-x={-Math.PI / 2} position-y={-0.075} receiveShadow material={material} matrixAutoUpdate={false} onUpdate={(o) => o.updateMatrix()}>

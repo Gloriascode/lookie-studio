@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Stats } from '@react-three/drei'
 import { getTourTarget } from './tour/ScrollCameraDirector'
+import { tourStore } from './tour/tourStore'
 
 const r = (n) => Math.round(n * 100) / 100
 
@@ -50,6 +51,8 @@ export function DevTools({ onOrbitChange }) {
 
   useEffect(() => {
     window.__three = { scene, gl, camera, triangleBudget: () => triangleBudget(scene) }
+    // Also in production builds (?dev only), so perf scripts can drive the tour.
+    window.__tour = tourStore
   }, [scene, gl, camera])
 
   useEffect(() => {

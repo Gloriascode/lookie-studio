@@ -1,11 +1,10 @@
-// Scroll / swipe / keys page through STOPS, one stop per gesture. Ported from
+// Scroll / swipe / keys page through the active room's stops, one stop per gesture. Ported from
 // merchtailor-3d's ScrollCameraDirector: a gesture accumulates past a threshold, jumps one
 // stop, then a cooldown swallows trackpad inertia. The camera flies straight to the stop
 // (eased position + look-at) and the rig does no work at all once it has settled.
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { STOPS } from './stops'
 import { tourStore } from './tourStore'
 
 const WHEEL_THRESHOLD = 36 // accumulated deltaY before a wheel gesture counts
@@ -48,7 +47,7 @@ export function ScrollCameraDirector({ blocked = false }) {
 
   // Initial pose.
   useEffect(() => {
-    const { pos, target } = stopPose(STOPS[tourStore.active])
+    const { pos, target } = stopPose(tourStore.stops[tourStore.active])
     camera.position.set(...pos)
     v.curTgt.set(...target)
     camera.lookAt(v.curTgt)
@@ -121,7 +120,7 @@ export function ScrollCameraDirector({ blocked = false }) {
       if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) advance(1)
       else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) advance(-1)
       else if (e.key === 'Home') tourStore.navigate(0)
-      else if (e.key === 'End') tourStore.navigate(STOPS.length - 1)
+      else if (e.key === 'End') tourStore.navigate(tourStore.stops.length - 1)
       else return
       e.preventDefault()
     }
@@ -132,12 +131,26 @@ export function ScrollCameraDirector({ blocked = false }) {
     el.addEventListener('touchend', onTouchEnd)
     window.addEventListener('keydown', onKey)
 
-    const intro = setTimeout(() => {
-      if (tourStore.active === 0 && !tourStore.moving) tourStore.jumpTo(1)
-    }, AUTO_INTRO_MS)
+    // Each room opens on a wide establishing shot, then glides in to its first real stop.
+    let intro
+    const armIntro = (delay) => {
+      clearTimeout(intro)
+      intro = setTimeout(() => {
+        if (tourStore.active === 0 && !tourStore.focused) tourStore.jumpTo(1)
+      }, delay)
+    }
+    armIntro(AUTO_INTRO_MS)
+    let sceneSeq = tourStore.sceneSeq
+    const unsubscribe = tourStore.subscribe(() => {
+      if (tourStore.sceneSeq === sceneSeq) return
+      sceneSeq = tourStore.sceneSeq
+      // Wait for the new room to stream in before gliding.
+      armIntro(AUTO_INTRO_MS + 600)
+    })
 
     return () => {
       clearTimeout(intro)
+      unsubscribe()
       el.removeEventListener('wheel', onWheel)
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchmove', onTouchMove)
@@ -148,17 +161,29 @@ export function ScrollCameraDirector({ blocked = false }) {
 
   useFrame((_, delta) => {
     const j = tourStore.pendingJump
+    if (j?.init && j.cut) {
+      // Room change: jump straight there, no flight through walls.
+      const { pos, target } = stopPose(tourStore.stops[j.toIdx])
+      camera.position.set(...pos)
+      v.curTgt.set(...target)
+      camera.lookAt(v.curTgt)
+      v.t = 1
+      tourStore.pendingJump = null
+      tourStore.setMoving(false)
+      return
+    }
     if (j?.init) {
-      const { pos, target } = j.pose ?? stopPose(STOPS[j.toIdx])
+      const { pos, target } = j.pose ?? stopPose(tourStore.stops[j.toIdx])
       v.fromPos.copy(camera.position)
       v.fromTgt.copy(v.curTgt)
       v.toPos.set(...pos)
       v.toTgt.set(...target)
       const dist = v.fromPos.distanceTo(v.toPos)
       v.duration = flightDuration(dist)
-      // Crossing the glass (one end inside, one outside)? Arc up so we don't clip the frame.
+      // Conservatory: crossing the glass (one end inside, one outside)? Arc up so we don't
+      // clip the frame. The bedroom's open front needs no arc.
       const inside = (p) => Math.abs(p.x) < 3.3 && Math.abs(p.z) < 3.95
-      v.lift = inside(v.fromPos) !== inside(v.toPos) ? Math.min(2.2, dist * 0.12) : 0
+      v.lift = tourStore.scene === 'garden' && inside(v.fromPos) !== inside(v.toPos) ? Math.min(2.2, dist * 0.12) : 0
       v.t = 0
       j.init = false
       tourStore.setMoving(true)
@@ -183,5 +208,5 @@ export function ScrollCameraDirector({ blocked = false }) {
 
 /** Current look-at target, for the dev orbit controls to pick up where the tour left off. */
 export function getTourTarget(stopIndex = tourStore.active) {
-  return stopPose(STOPS[stopIndex]).target
+  return stopPose(tourStore.stops[stopIndex]).target
 }

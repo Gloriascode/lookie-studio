@@ -37,6 +37,14 @@ const PLANTING = [
   ['bush', -4.7, -5.3], ['bush2', 4.8, -5.2], ['bush', 5.0, 5.4], ['bush2', -5.0, 5.3], ['bush', -5.1, 0.5], ['bush2', 5.2, -1.2],
 ]
 
+function dispose(meshes) {
+  meshes.forEach((m) => {
+    m.geometry.dispose()
+    m.material.dispose()
+    m.dispose()
+  })
+}
+
 /** Yield to the browser between expensive steps. */
 const idle = () => new Promise((r) => (window.requestIdleCallback ? requestIdleCallback(() => r(), { timeout: 400 }) : setTimeout(r, 30)))
 
@@ -66,7 +74,7 @@ function pbrMaterials(tree) {
   return { barkMat, leafMat }
 }
 
-async function growSpecies(EzTree, key, rand) {
+async function growSpecies(EzTree, key, rand, planting, castShadow) {
   const s = SPECIES[key]
   const tree = new EzTree.Tree()
   tree.loadFromJson({ ...structuredClone(EzTree.TreePreset[s.preset]), seed: s.seed })
@@ -79,7 +87,7 @@ async function growSpecies(EzTree, key, rand) {
   const box = branches.boundingBox.clone().union(leaves.boundingBox)
   const scale = s.height / (box.max.y - box.min.y)
 
-  const spots = PLANTING.filter(([k]) => k === key)
+  const spots = planting.filter(([k]) => k === key)
   const m = new THREE.Matrix4()
   const q = new THREE.Quaternion()
   const up = new THREE.Vector3(0, 1, 0)
@@ -92,7 +100,7 @@ async function growSpecies(EzTree, key, rand) {
     const mesh = new THREE.InstancedMesh(geometry, material, matrices.length)
     matrices.forEach((mat, i) => mesh.setMatrixAt(i, mat))
     mesh.computeBoundingSphere()
-    mesh.castShadow = true
+    mesh.castShadow = castShadow
     mesh.receiveShadow = true
     mesh.matrixAutoUpdate = false
     return mesh
@@ -100,7 +108,13 @@ async function growSpecies(EzTree, key, rand) {
   return { key, meshes: [make(branches, barkMat), make(leaves, leafMat)] }
 }
 
-export function Trees() {
+/**
+ * @param {object} props
+ * @param {Array<[string, number, number]>} [props.planting]  [species, x, z] (default: the
+ *   conservatory's garden)
+ * @param {boolean} [props.castShadow]  false for trees outside a room's shadow frustum
+ */
+export function Trees({ planting = PLANTING, castShadow = true }) {
   const [grown, setGrown] = useState([])
   const refreshShadows = useShadowRefresh()
 
@@ -112,11 +126,14 @@ export function Trees() {
       const EzTree = await import('ez-tree-src/index.js')
       const rand = mulberry32(99)
       // Nearest-first, so the shrubs and the grove behind the glass appear before the horizon.
-      for (const key of ['bush', 'bush2', 'oak', 'ash', 'aspen', 'pine']) {
+      const wanted = new Set(planting.map(([k]) => k))
+      for (const key of ['bush', 'bush2', 'oak', 'ash', 'aspen', 'pine'].filter((k) => wanted.has(k))) {
         await idle()
         if (cancelled) return
-        const species = await growSpecies(EzTree, key, rand)
+        const species = await growSpecies(EzTree, key, rand, planting, castShadow)
         meshes.push(...species.meshes)
+        // Room left while this species was growing: the cleanup below already ran.
+        if (cancelled) return dispose(species.meshes)
         setGrown((g) => [...g, species])
         refreshShadows()
       }
@@ -127,11 +144,7 @@ export function Trees() {
     })()
     return () => {
       cancelled = true
-      meshes.forEach((m) => {
-        m.geometry.dispose()
-        m.material.dispose()
-        m.dispose()
-      })
+      dispose(meshes)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
